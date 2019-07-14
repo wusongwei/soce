@@ -1,0 +1,16 @@
+if (__SOCE_FADSDB__)
+#nothing
+else(__SOCE_FADSDB__)
+	set(__SOCE_FADSDB__ 1)
+	set(SOCE_FADSDB_ROOT ${SOCE_ROOT}/fadsdb)
+
+	INCLUDE(${SOCE_ROOT}/utils/CMakeLists.txt)
+	INCLUDE(${SOCE_ROOT}/fads/proto/CMakeLists.txt)
+	INCLUDE(${SOCE_ROOT}/log4rel/CMakeLists.txt)
+
+	INCLUDE_DIRECTORIES( ${SOCE_FADSDB_ROOT}/src )
+	INCLUDE_DIRECTORIES( ${SOCE_FADSDB_ROOT}/gen-cpp )
+	AUX_SOURCE_DIRECTORY(${SOCE_FADSDB_ROOT}/src SRC_LIST)
+	AUX_SOURCE_DIRECTORY(${SOCE_FADSDB_ROOT}/gen-cpp SRC_LIST)
+
+endif(__SOCE_FADSDB__)

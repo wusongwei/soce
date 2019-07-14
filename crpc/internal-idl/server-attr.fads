@@ -1,0 +1,22 @@
+namespace soce.crpc.attr
+
+struct MethodFilters
+{
+    string filter;
+    map<string, i32> val_type;
+}
+
+struct ServerAttrs
+{
+    string name;
+    map<string, MethodFilters> methods;
+
+    require {name, methods}
+}
+
+struct ProcessorAttrs
+{
+    list<string> server_attrs;
+
+    require {server_attrs}
+}

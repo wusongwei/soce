@@ -1,0 +1,76 @@
+namespace fads.sample
+
+enum Color
+{
+    red = 1,
+    yellow,
+    blue
+}
+
+struct PrimaryType
+{
+    bool a;
+    i32 b;
+    i64 c;
+    float d;
+    double e;
+    string f;
+    byte[4] g;
+    Color color;
+}
+
+struct ComplexType
+{
+    PrimaryType pt;
+    i32 a;
+}
+
+struct SampleAsElem
+{
+    i32 a;
+}
+
+list OutterPrimayList {i32}
+list OutterComplexList {SampleAsElem}
+list OutterMultiList {OutterPrimayList}
+
+struct SampleList
+{
+    OutterPrimayList opl;
+    OutterComplexList ocl;
+    OutterMultiList oml;
+    list<i32> ipl;
+    list<SampleAsElem> icl;
+    list<OutterPrimayList> iml;
+}
+
+set OutterPrimaySet {i32}
+set OutterComplexSet {SampleAsElem}
+set OutterMultiSet {OutterPrimaySet}
+
+struct SampleSet
+{
+    OutterPrimaySet opl;
+    OutterComplexSet ocl;
+    OutterMultiSet oml;
+    set<i32> ipl;
+    set<SampleAsElem> icl;
+    set<OutterPrimaySet> iml;
+}
+
+map OutterPrimayMap {i32, i32}
+map OutterComplexMapPC {i32, SampleAsElem}
+map OutterComplexMapCP {SampleAsElem, i32}
+map OutterComplexMapCC {SampleAsElem, SampleAsElem}
+
+struct SampleMap
+{
+    OutterPrimayMap opm;
+    OutterComplexMapPC ocmpc;
+    OutterComplexMapCP ocmcp;
+    OutterComplexMapCC ocmcc;
+    map<i32, i32> ipm;
+    map<i32, SampleAsElem> ipc;
+    map<SampleAsElem, i32> icp;
+    map<SampleAsElem, SampleAsElem> icc;
+}

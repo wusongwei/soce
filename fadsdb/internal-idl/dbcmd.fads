@@ -1,0 +1,82 @@
+namespace soce.fadsdb
+
+enum CmdType
+{
+    kCmdCreate,
+    kCmdInsert,
+    kCmdRemove,
+    kCmdUpdate,
+    kCmdSelect,
+    kCmdSelUp
+}
+
+struct Header
+{
+    CmdType type;
+    i64 id;
+
+    require {type, id}
+}
+
+struct FadsDbCreate
+{
+    Header header;
+    string schema;
+
+    require {header, schema}
+}
+
+struct FadsDbInsert
+{
+    Header header;
+    string key;
+    string table;
+    string data;
+
+    require {header, key, table, data}
+}
+
+struct FadsDbRemove
+{
+    Header header;
+    string key;
+    string table;
+
+    require {header, key, table}
+}
+
+struct FadsDbUpdate
+{
+    Header header;
+    string key;
+    string table;
+    string cmd;
+    string filters;
+
+    require {header, key, table, cmd}
+}
+
+struct FadsDbSelect
+{
+    Header header;
+    string key;
+    string table;
+    string fields;
+    string filters;
+
+    require {header, table, key, fields}
+}
+
+struct FadsDbSelUp
+{
+    Header header;
+    string key;
+    string table;
+    string fields;
+    string uncond_cmds;
+    string precmds;
+    string subcmds;
+    string filters;
+
+    require {header, key, table, fields}
+}

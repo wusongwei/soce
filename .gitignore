@@ -30,3 +30,9 @@
 *.exe
 *.out
 *.app
+
+# Compile Direcroty
+build
+
+# Emacs Temporary File
+*~

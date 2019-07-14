@@ -1,0 +1,46 @@
+namespace soce.crpc
+
+enum RpcType
+{
+    kRpcTypeReq,
+    kRpcTypeResp,
+    kRpcTypeCondCast,
+    kRpcTypeUncondCast
+}
+
+enum RpcStatus
+{
+    kRpcStatusOK,
+    kRpcStatusProtoError,
+    kRpcStatusNoService,
+    kRpcStatusAOPFailed
+}
+
+struct CrpcReqHeader
+{
+    RpcType type;
+    string service;
+    string method;
+    i64 req_id;
+    i32 tid;
+    string target_addr;
+    map<string, string> ext;
+
+    require {type, service, method, req_id, tid}
+}
+
+struct CrpcRespHeader
+{
+    RpcType type;
+    i64 req_id;
+    i32 tid;
+    RpcStatus status;
+    map<string, string> ext;
+
+    require {type, req_id, tid, status}
+}
+
+struct CrpcErrorResp
+{
+    CrpcRespHeader header;
+}

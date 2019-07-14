@@ -1,0 +1,11 @@
+struct Worker
+{
+    string name;
+    i32 age;
+}
+
+table company
+{
+    string CEO;
+    Worker worker;
+}
