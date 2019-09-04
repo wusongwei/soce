@@ -71,6 +71,7 @@ namespace crpc{
         void watch_response_out();
         void handle_request_out(int fd);
         void handle_response_out(int fd);
+        void append_null_resp(uint64_t conn_id, int64_t req_id, int32_t tid);
         void register_to_ns();
         int send_req(uint64_t conn_id, const char* data, size_t len);
         int run_thread_shared_service(size_t cores, int& tid);

@@ -88,7 +88,7 @@ namespace crpc{
 
             CRPC_DEBUG << _S("conn_id", conn_id) << _S("type", "response") << _S("req_id", req_id) << _S("tid", tid);
 
-            iter->second->append_resp(req_id, std::move(data));
+            iter->second->append_resp(conn_id, req_id, std::move(data));
 
             auto it = reqid_map_.find(req_id);
             if (it != reqid_map_.end()){
@@ -141,7 +141,7 @@ namespace crpc{
             auto it_dt = dispatch_threads_.find(i.first);
             if (it_dt != dispatch_threads_.end()){
                 for (auto reqid : i.second){
-                    it_dt->second->append_resp(reqid, std::move(string()));
+                    it_dt->second->append_resp(conn_id, reqid, std::move(string()));
                     reqid_map_.erase(reqid);
                 }
             }
@@ -263,34 +263,34 @@ namespace crpc{
         }
 
         for (auto& i : reqs){
-            std::vector<uint64_t>& conn_ids = i.conn_ids_;
+            std::set<uint64_t>& conn_ids = i.conn_ids_;
             int32_t& tid = i.tid_;
             int64_t& req_id = i.req_id_;
             std::string& data = i.data_;
-            bool& p2p = i.p2p_;
 
-            if (p2p){
-                if (conn_ids.size() != 1
-                    || conn_ids.front() == 0
-                    || send_req(conn_ids.front(), data.c_str(), data.size())){
-                    auto iter = dispatch_threads_.find(tid);
-                    if (iter != dispatch_threads_.end()){
-                        iter->second->append_resp(req_id, std::move(string()));
-                    }
-                }
-                else{
-                    uint64_t conn_id = conn_ids.front();
-                    CRPC_DEBUG << _S("reqid", req_id) << _S("tid", tid) << _S("conn_id", conn_id);
+            if (conn_ids.empty()){
+                append_null_resp(0, req_id, tid);
+                continue;
+            }
 
-                    conn_id_map_[conn_id][tid].insert(req_id);
-                    reqid_map_[req_id] = std::make_pair(conn_id, tid);
+            for (auto conn_id : i.conn_ids_) {
+                if (conn_id == 0
+                    || send_req(conn_id, data.c_str(), data.size())) {
+                    append_null_resp(conn_id, req_id, tid);
+                    continue;
                 }
+
+                conn_id_map_[conn_id][tid].insert(req_id);
+                reqid_map_[req_id] = std::make_pair(conn_id, tid);
             }
-            else{
-                for (auto conn_id : conn_ids){
-                    send_req(conn_id, data.c_str(), data.size());
-                }
-            }
+        }
+    }
+
+    void Processor::append_null_resp(uint64_t conn_id, int64_t req_id, int32_t tid)
+    {
+        auto iter = dispatch_threads_.find(tid);
+        if (iter != dispatch_threads_.end()){
+            iter->second->append_resp(conn_id, req_id, std::move(string()));
         }
     }
 

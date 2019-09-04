@@ -92,7 +92,7 @@ namespace crpc{
         const string& service = header.get_service();
         const string& method = header.get_method();
         int64_t req_id = header.get_req_id();
-        std::vector<uint64_t> conn_ids;
+        std::set<uint64_t> conn_ids;
 
         if (rpc_type == kRpcTypeReq){
             uint64_t conn_id = 0;
@@ -105,12 +105,10 @@ namespace crpc{
             else{
                 conn_id = nameserver_->get_server(service, method, request);
             }
-
-            conn_ids.push_back(conn_id);
-            req_out_->produce(tid_, conn_ids, tid_, req_id, std::move(request), true);
+            conn_ids.insert(conn_id);
+            request_stubs_[req_id].is_broadcast = false;
         }
         else{
-            vector<uint64_t> conn_ids;
             int rc = 0;
             if(rpc_type == kRpcTypeCondCast){
                 rc = nameserver_->get_cond_servers(service, method, request, conn_ids);
@@ -119,15 +117,19 @@ namespace crpc{
                 rc = nameserver_->get_all_servers(service, method, request, conn_ids);
             }
 
-            if (!rc){
-                req_out_->produce(tid_, conn_ids, tid_, req_id, std::move(request), false);
+            if (rc){
+                conn_ids.clear();
             }
+            request_stubs_[req_id].is_broadcast = true;
         }
+
+        request_stubs_[req_id].conn_ids = conn_ids;
+        req_out_->produce(tid_, conn_ids, tid_, req_id, std::move(request));
     }
 
-    void WorkerThread::append_resp(int64_t req_id, std::string&& resp)
+    void WorkerThread::append_resp(uint64_t conn_id, int64_t req_id, std::string&& resp)
     {
-        resp_in_->produce(consumer_id_, req_id, std::move(resp));
+        resp_in_->produce(consumer_id_, conn_id, req_id, std::move(resp));
     }
 
     void WorkerThread::stop()
@@ -221,14 +223,37 @@ namespace crpc{
         for (auto& i : resps){
             CRPC_DEBUG << _S("ConsumerId", consumer_id_) << _S("reqid", i.reqid_);
 
-            auto iter = requests_.find(i.reqid_);
-            if (iter == requests_.end()){
+            auto iter = request_stubs_.find(i.reqid_);
+            if (iter == request_stubs_.end()){
                 continue;
             }
 
-            last_resp_ = &i.data_;
-            SCortEngine.resume(iter->second);
-            requests_.erase(iter->first);
+            if (iter->second.is_broadcast) {
+                static string ok = "BroadcastOk";
+                static string error = "BroadcastError";
+
+                size_t conn_size = iter->second.conn_ids.size();
+                bool do_resp = true;
+                if (conn_size == 0) {
+                    last_resp_ = &ok;
+                }else if (i.data_.empty()) {
+                    last_resp_ = &error;
+                }else if(conn_size == 1){
+                    last_resp_ = &ok;
+                }else{
+                    iter->second.conn_ids.erase(i.conn_id_);
+                    do_resp = false;
+                }
+
+                if (do_resp) {
+                    SCortEngine.resume(iter->second.cid);
+                    request_stubs_.erase(iter);
+                }
+            }else{
+                last_resp_ = &i.data_;
+                SCortEngine.resume(iter->second.cid);
+                request_stubs_.erase(iter);
+            }
         }
     }
 

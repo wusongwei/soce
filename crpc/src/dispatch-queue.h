@@ -22,7 +22,7 @@
 
 #include <memory>
 #include <mutex>
-#include <vector>
+#include <set>
 #include <string>
 #include <stdint.h>
 #include "crpc/service-if.h"
@@ -67,21 +67,20 @@ namespace crpc{
     {
     public:
         using QueueData = struct QueueData{
-        QueueData(const std::vector<uint64_t> conn_ids, int32_t tid, int64_t req_id, std::string&& data, bool p2p)
-        : conn_ids_(conn_ids), tid_(tid), req_id_(req_id), data_(std::move(data)), p2p_(p2p)
+        QueueData(const std::set<uint64_t> conn_ids, int32_t tid, int64_t req_id, std::string&& data)
+        : conn_ids_(conn_ids), tid_(tid), req_id_(req_id), data_(std::move(data))
                 {
                 }
 
-            std::vector<uint64_t> conn_ids_;
+            std::set<uint64_t> conn_ids_;
             int32_t tid_ = 0;
             int64_t req_id_ = 0;
             std::string data_;
-            bool p2p_ = true;
         };
 
     public:
         explicit RequestOut(size_t producers);
-        void produce(size_t pid, const std::vector<uint64_t>& conn_ids, int32_t tid, int64_t req_id, std::string&& data, bool p2p);
+        void produce(size_t pid, const std::set<uint64_t>& conn_ids, int32_t tid, int64_t req_id, std::string&& data);
         inline bool good() {return queue_->good();}
         inline int get_consumer_fd() {return queue_->get_consumer_fd();}
         inline int try_consume(soce::utils::DQVector<QueueData>& out)
@@ -97,19 +96,20 @@ namespace crpc{
     {
     public:
         using QueueData = struct QueueData{
-        QueueData(size_t consumer_id, int64_t reqid, std::string&& data)
-        :consumer_id_(consumer_id), reqid_(reqid), data_(std::move(data))
+        QueueData(size_t consumer_id, uint64_t conn_id, int64_t reqid, std::string&& data)
+        :consumer_id_(consumer_id), conn_id_(conn_id), reqid_(reqid), data_(std::move(data))
                 {
                 }
 
             size_t consumer_id_ = 0;
+            uint64_t conn_id_ = 0;
             int64_t reqid_ = 0;
             std::string data_;
         };
 
     public:
         explicit ResponseIn(size_t consumers);
-        void produce(size_t consumer_id, int64_t reqid, std::string&& data);
+        void produce(size_t consumer_id, uint64_t conn_id, int64_t reqid, std::string&& data);
         inline bool good() {return queue_->good();}
         inline int get_consumer_fd(size_t cid) {return queue_->get_consumer_fd(cid);}
         inline int try_consume(size_t cid, soce::utils::DQVector<QueueData>& out)

@@ -26,6 +26,7 @@
 #include <vector>
 #include <mutex>
 #include <thread>
+#include <set>
 #include "gen-cpp/server-attr.h"
 #include "transport/transport-if.h"
 #include "transport/processor-if.h"
@@ -63,10 +64,10 @@ namespace crpc{
         int get_cond_servers(const std::string& service,
                              const std::string& method,
                              const std::string& request,
-                             std::vector<uint64_t>& conn_ids);
+                             std::set<uint64_t>& conn_ids);
         int get_all_servers(const std::string& service,
                             const std::string& method,
-                            std::vector<uint64_t>& conn_ids);
+                            std::set<uint64_t>& conn_ids);
 
     private:
         uint64_t get_cond_server(const std::string& service,
@@ -113,11 +114,11 @@ namespace crpc{
         virtual int get_cond_servers(const std::string& service,
                                      const std::string& method,
                                      const std::string& request,
-                                     std::vector<uint64_t>& conn_ids) = 0;
+                                     std::set<uint64_t>& conn_ids) = 0;
         virtual int get_all_servers(const std::string& service,
                                     const std::string& method,
                                     const std::string& request,
-                                    std::vector<uint64_t>& conn_ids) = 0;
+                                    std::set<uint64_t>& conn_ids) = 0;
         virtual void do_watch_service(const std::string& service) = 0;
         virtual void run() = 0;
 
@@ -147,11 +148,11 @@ namespace crpc{
         virtual int get_cond_servers(const std::string& service,
                                      const std::string& method,
                                      const std::string& request,
-                                     std::vector<uint64_t>& conn_ids);
+                                     std::set<uint64_t>& conn_ids);
         virtual int get_all_servers(const std::string& service,
                                     const std::string& method,
                                     const std::string& request,
-                                    std::vector<uint64_t>& conn_ids);
+                                    std::set<uint64_t>& conn_ids);
         virtual void do_watch_service(const std::string& service);
         virtual void run();
         void update(int fd);

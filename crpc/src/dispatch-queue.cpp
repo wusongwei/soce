@@ -22,7 +22,6 @@
 #include "crpc/log.h"
 
 using std::string;
-using std::vector;
 
 namespace soce{
 namespace crpc{
@@ -43,9 +42,9 @@ namespace crpc{
         queue_.reset(new soce::utils::DispatchQueue_n1<QueueData>(producers));
     }
 
-    void RequestOut::produce(size_t pid, const std::vector<uint64_t>& conn_ids, int32_t tid, int64_t req_id, std::string&& data, bool p2p)
+    void RequestOut::produce(size_t pid, const std::set<uint64_t>& conn_ids, int32_t tid, int64_t req_id, std::string&& data)
     {
-        queue_->produce(pid, conn_ids, tid, req_id, std::move(data), p2p);
+        queue_->produce(pid, conn_ids, tid, req_id, std::move(data));
     }
 
     ResponseIn::ResponseIn(size_t consumers)
@@ -55,9 +54,9 @@ namespace crpc{
                 }));
     }
 
-    void ResponseIn::produce(size_t consumer_id, int64_t reqid, std::string&& data)
+    void ResponseIn::produce(size_t consumer_id, uint64_t conn_id, int64_t reqid, std::string&& data)
     {
-        queue_->produce(consumer_id, reqid, std::move(data));
+        queue_->produce(consumer_id, conn_id, reqid, std::move(data));
     }
 
     ResponseOut::ResponseOut(size_t producers)

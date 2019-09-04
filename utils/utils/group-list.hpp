@@ -89,6 +89,10 @@ namespace utils{
 
                 do{
                     ++gid_;
+                    if (gid_ == 0) {
+                        continue;
+                    }
+
                     if (data_.get(gid_, &plist)){
                         break;
                     }

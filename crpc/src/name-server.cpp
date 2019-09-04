@@ -185,7 +185,7 @@ namespace crpc{
     int ServerRepo::get_cond_servers(const std::string& service,
                                      const std::string& method,
                                      const std::string& request,
-                                     vector<uint64_t>& conn_ids)
+                                     std::set<uint64_t>& conn_ids)
     {
         std::lock_guard<std::mutex> lck(mtx_);
         auto iter = servers_.find(service);
@@ -222,7 +222,7 @@ namespace crpc{
                                             std::placeholders::_3))){
                 soce::utils::CondExpr* p = NULL;
                 iter_m->second.update_to_back(iter->first, &p);
-                conn_ids.push_back(iter->first);
+                conn_ids.insert(iter->first);
             }
         }
 
@@ -231,7 +231,7 @@ namespace crpc{
 
     int ServerRepo::get_all_servers(const std::string& service,
                                     const std::string& method,
-                                    std::vector<uint64_t>& conn_ids)
+                                    std::set<uint64_t>& conn_ids)
     {
         std::lock_guard<std::mutex> lck(mtx_);
 
@@ -245,7 +245,7 @@ namespace crpc{
         if (iter_cm != methods.cond_methods.end()){
             for (auto it=iter_cm->second.begin();
                  it!=iter_cm->second.end(); ++it){
-                conn_ids.push_back(it->first);
+                conn_ids.insert(it->first);
             }
         }
 
@@ -253,7 +253,7 @@ namespace crpc{
         if (iter_ucm != methods.uncond_methods.end()){
             for (auto it=iter_ucm->second.begin();
                  it!=iter_ucm->second.end(); ++it){
-                conn_ids.push_back(it->first);
+                conn_ids.insert(it->first);
             }
         }
 
@@ -476,7 +476,7 @@ namespace crpc{
     int NameServerZk::get_cond_servers(const std::string& service,
                                        const std::string& method,
                                        const string& request,
-                                       vector<uint64_t>& conn_ids)
+                                       std::set<uint64_t>& conn_ids)
     {
         lock_.read_lock();
         int rc = server_repo_.get_cond_servers(service, method, request, conn_ids);
@@ -487,7 +487,7 @@ namespace crpc{
     int NameServerZk::get_all_servers(const std::string& service,
                                       const std::string& method,
                                       const std::string& request,
-                                      std::vector<uint64_t>& conn_ids)
+                                      std::set<uint64_t>& conn_ids)
     {
         lock_.read_lock();
         int rc = server_repo_.get_all_servers(service, method, conn_ids);

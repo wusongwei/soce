@@ -1,5 +1,5 @@
-#ifndef _echo_123408386_H_
-#define _echo_123408386_H_
+#ifndef _echo_1266766164_H_
+#define _echo_1266766164_H_
 
 #include <string>
 #include <bitset>
@@ -470,6 +470,79 @@ struct hash_Echodo_null_testReq
     }
 };
 
+class Echodo_condcast_testRespTypeTree{
+public:
+    Echodo_condcast_testRespTypeTree(soce::proto::TypeTree& type_tree);
+};
+
+class Echodo_condcast_testResp{
+public:
+    void set_header(const soce::crpc::CrpcRespHeader& _header){
+        header = _header;
+        status_[0] = true;
+    }
+    void set_header(soce::crpc::CrpcRespHeader&& _header){
+        header = std::move(_header);
+        status_[0] = true;
+    }
+    const soce::crpc::CrpcRespHeader& get_header() const {
+        return header;
+    }
+    soce::crpc::CrpcRespHeader& mutable_header(){
+        status_[0] = true;
+        return header;
+    }
+    bool has_header() const{
+        return status_[0];
+    }
+
+public:
+    /* operators */
+    Echodo_condcast_testResp() = default;
+    Echodo_condcast_testResp(const Echodo_condcast_testResp&) = default;
+    Echodo_condcast_testResp& operator=(const Echodo_condcast_testResp& rhs) = default;
+    bool operator==(const Echodo_condcast_testResp& rhs) const{
+        if (header != rhs.header)
+            return false;
+        return true;
+    }
+
+    bool operator!=(const Echodo_condcast_testResp& rhs) const{
+        return !(*this == rhs);
+    }
+
+    size_t operator()(const Echodo_condcast_testResp& rhs) const{
+        size_t hash_code = 0;
+        hash_code = 0
+            ^ header(header);
+        return hash_code;
+    }
+
+    size_t read(soce::proto::ProtoIf* proto, bool required, bool with_type);
+    size_t write(soce::proto::ProtoIf* proto, bool required, bool has_set, bool with_type = true) const;
+    size_t deserialize(soce::proto::ProtoIf* proto);
+    size_t serialize(soce::proto::ProtoIf* proto) const;
+    static soce::proto::TypeTree* get_type_tree();
+
+private:
+    /* class members */
+    soce::crpc::CrpcRespHeader header;
+
+    /* for optional */
+    bitset<1> attrs_ = 0;
+    bitset<1> status_;
+
+public:
+    static Echodo_condcast_testRespTypeTree s_type_tree;
+};
+
+struct hash_Echodo_condcast_testResp
+{
+    size_t operator()(const Echodo_condcast_testResp& rhs) const{
+        return rhs(rhs);
+    }
+};
+
 class Echodo_condcast_testReqTypeTree{
 public:
     Echodo_condcast_testReqTypeTree(soce::proto::TypeTree& type_tree);
@@ -562,6 +635,79 @@ public:
 struct hash_Echodo_condcast_testReq
 {
     size_t operator()(const Echodo_condcast_testReq& rhs) const{
+        return rhs(rhs);
+    }
+};
+
+class Echodo_uncondcast_testRespTypeTree{
+public:
+    Echodo_uncondcast_testRespTypeTree(soce::proto::TypeTree& type_tree);
+};
+
+class Echodo_uncondcast_testResp{
+public:
+    void set_header(const soce::crpc::CrpcRespHeader& _header){
+        header = _header;
+        status_[0] = true;
+    }
+    void set_header(soce::crpc::CrpcRespHeader&& _header){
+        header = std::move(_header);
+        status_[0] = true;
+    }
+    const soce::crpc::CrpcRespHeader& get_header() const {
+        return header;
+    }
+    soce::crpc::CrpcRespHeader& mutable_header(){
+        status_[0] = true;
+        return header;
+    }
+    bool has_header() const{
+        return status_[0];
+    }
+
+public:
+    /* operators */
+    Echodo_uncondcast_testResp() = default;
+    Echodo_uncondcast_testResp(const Echodo_uncondcast_testResp&) = default;
+    Echodo_uncondcast_testResp& operator=(const Echodo_uncondcast_testResp& rhs) = default;
+    bool operator==(const Echodo_uncondcast_testResp& rhs) const{
+        if (header != rhs.header)
+            return false;
+        return true;
+    }
+
+    bool operator!=(const Echodo_uncondcast_testResp& rhs) const{
+        return !(*this == rhs);
+    }
+
+    size_t operator()(const Echodo_uncondcast_testResp& rhs) const{
+        size_t hash_code = 0;
+        hash_code = 0
+            ^ header(header);
+        return hash_code;
+    }
+
+    size_t read(soce::proto::ProtoIf* proto, bool required, bool with_type);
+    size_t write(soce::proto::ProtoIf* proto, bool required, bool has_set, bool with_type = true) const;
+    size_t deserialize(soce::proto::ProtoIf* proto);
+    size_t serialize(soce::proto::ProtoIf* proto) const;
+    static soce::proto::TypeTree* get_type_tree();
+
+private:
+    /* class members */
+    soce::crpc::CrpcRespHeader header;
+
+    /* for optional */
+    bitset<1> attrs_ = 0;
+    bitset<1> status_;
+
+public:
+    static Echodo_uncondcast_testRespTypeTree s_type_tree;
+};
+
+struct hash_Echodo_uncondcast_testResp
+{
+    size_t operator()(const Echodo_uncondcast_testResp& rhs) const{
         return rhs(rhs);
     }
 };

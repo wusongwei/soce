@@ -697,9 +697,7 @@ namespace compiler{
                 return -1;
             }
             SOCE_DEBUG << _S("Method", method);
-            if (rc_type != "null"
-                && rc_type != "condcast"
-                && rc_type != "uncondcast"){
+            if (rc_type != "null"){
                 resp_name = name + method + "Resp";
                 ts_resp->set_name(resp_name);
                 if (STypeCreater.add_type(ts_resp)){

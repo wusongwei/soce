@@ -41,6 +41,7 @@ namespace crpc{
         kRespProtoError,
         kCortTimeout,
         kServerNotAvailable,
+        kBroadcastError,
         kUnknown
     };
 

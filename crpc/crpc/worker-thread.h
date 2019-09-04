@@ -23,6 +23,7 @@
 #include <memory>
 #include <thread>
 #include <vector>
+#include <set>
 #include <unordered_map>
 #include <mutex>
 #include "service-if.h"
@@ -30,6 +31,7 @@
 #include "transport/transport-if.h"
 #include "cort-engine/cort-engine.h"
 #include "utils/snowflake.h"
+#include "utils/group-list.hpp"
 #include "gen-cpp/crpc-header.h"
 
 namespace soce{
@@ -42,6 +44,13 @@ namespace crpc{
 
     class WorkerThread
     {
+    public:
+        using RequestStub = struct {
+            std::set<uint64_t> conn_ids;
+            bool is_broadcast = false;
+            soce::cortengine::CortEngine::CortId cid;
+        };
+
     public:
         WorkerThread(int tid,
                      size_t consumer_id,
@@ -59,10 +68,10 @@ namespace crpc{
         }
         inline int get_tid() {return tid_;}
         inline void add_request(int64_t req_id, soce::cortengine::CortEngine::CortId cid){
-            requests_[req_id] = cid;
+            request_stubs_[req_id].cid = cid;
         }
         inline void del_request(int64_t req_id){
-            requests_.erase(req_id);
+            request_stubs_.erase(req_id);
         }
         inline void run(){
             thread_ = std::thread(&WorkerThread::thread_entry, this);
@@ -72,7 +81,7 @@ namespace crpc{
         inline std::string* get_last_resp() {return last_resp_;}
 
         void append_req(const CrpcReqHeader& header, std::string&& req);
-        void append_resp(int64_t req_id, std::string&& resp);
+        void append_resp(uint64_t conn_id, int64_t req_id, std::string&& resp);
         void stop();
         void check_cort_timeout();
         void steal_jobs();
@@ -103,7 +112,7 @@ namespace crpc{
         std::shared_ptr<soce::transport::TransportIf> transport_;
         std::shared_ptr<soce::utils::Snowflake> snowflake_;
         std::unordered_map<std::string, std::shared_ptr<ServiceIf>> services_;
-        std::unordered_map<int64_t, soce::cortengine::CortEngine::CortId> requests_;
+        std::unordered_map<int64_t, RequestStub> request_stubs_;
         std::string* last_resp_ = nullptr;
     };
 

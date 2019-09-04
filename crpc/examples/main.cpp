@@ -61,7 +61,7 @@ public:
             SOCE_INFO << _D("Timer test");
             soce::cortengine::CortEngine::CortId id = SCortEngine.create([&]{
                     crpc::sample::EchoCortClient clt;
-                    clt.set_timeout(5000);
+                    clt.set_timeout(1000);
                     //clt.set_target_addr("127.0.0.1:7890");
                     int value = 0;
                     if (clt.echo(value, 100)){
@@ -169,7 +169,7 @@ public:
     virtual std::shared_ptr<ServiceIf> create()
     {
         EchoService* p = new EchoService();
-        p->set_echo_filter("p <= 3 || p > 10");
+        p->set_echo_filter("ceo.age <= 3 || p > 10");
         p->set_do_condcast_test_filter("p >= 3");
         return std::shared_ptr<ServiceIf>(p);
     }

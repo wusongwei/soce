@@ -92,14 +92,13 @@ namespace compiler{
                     << indent(0, 1)
                     << "virtual ";
 
-                if (j.second.get_return_type() != "void"
-                    && j.second.get_return_type() != "null"
-                    && j.second.get_return_type() != "condcast"
-                    && j.second.get_return_type() != "uncondcast"){
-                    oss << j.second.get_return_type();
-                }
-                else{
+                if (j.second.get_return_type() == "void"
+                    || j.second.get_return_type() == "null"
+                    || j.second.get_return_type() == "condcast"
+                    || j.second.get_return_type() == "uncondcast"){
                     oss << "void";
+                }else {
+                    oss << j.second.get_return_type();
                 }
 
                 oss << " "
@@ -146,12 +145,12 @@ namespace compiler{
             for (auto& j : i.second.get_methods()){
                 bool has_return = true;
                 bool has_resp = true;
-                if (j.second.get_return_type() == "void"){
-                    has_return = false;
-                }
-                if (j.second.get_return_type() == "null"
+                if (j.second.get_return_type() == "void"
                     || j.second.get_return_type() == "condcast"
                     || j.second.get_return_type() == "uncondcast"){
+                    has_return = false;
+                }
+                if (j.second.get_return_type() == "null"){
                     has_return = false;
                     has_resp = false;
                 }
@@ -234,12 +233,12 @@ namespace compiler{
             for (auto& j : i.second.get_methods()){
                 bool has_return = true;
                 bool has_resp = true;
-                if (j.second.get_return_type() == "void"){
-                    has_return = false;
-                }
-                if (j.second.get_return_type() == "null"
+                if (j.second.get_return_type() == "void"
                     || j.second.get_return_type() == "condcast"
                     || j.second.get_return_type() == "uncondcast"){
+                    has_return = false;
+                }
+                if (j.second.get_return_type() == "null"){
                     has_return = false;
                     has_resp = false;
                 }
@@ -310,7 +309,8 @@ namespace compiler{
                     << indent(0, 1)
                     << "if (rc.empty()){\n";
                 oss << indent(0, 2)
-                    << "raw_req_ = (void*)&req;\n";
+                    << "raw_req_ = (void*)&req;\n"
+                    << indent(0, 2);
                 if (has_return){
                     oss << "resp.mutable_result() = ";
                 }
@@ -381,12 +381,12 @@ namespace compiler{
             for (auto& j : i.second.get_methods()){
                 bool has_return = true;
                 bool has_resp = true;
-                if (j.second.get_return_type() == "void"){
-                    has_return = false;
-                }
-                if (j.second.get_return_type() == "null"
+                if (j.second.get_return_type() == "void"
                     || j.second.get_return_type() == "condcast"
                     || j.second.get_return_type() == "uncondcast"){
+                    has_return = false;
+                }
+                if (j.second.get_return_type() == "null"){
                     has_return = false;
                     has_resp = false;
                 }
@@ -556,6 +556,18 @@ namespace compiler{
                         << "if (!resp_str || resp_str->empty()){\n"
                         << indent(0, 2)
                         << "return soce::crpc::kServerNotAvailable;\n"
+                        << indent(0, 1)
+                        << "}\n"
+                        << indent(0, 1)
+                        << "if (*resp_str == \"BroadcastOk\"){\n"
+                        << indent(0, 2)
+                        << "return soce::crpc::kOk;\n"
+                        << indent(0, 1)
+                        << "}\n"
+                        << indent(0, 1)
+                        << "if (*resp_str == \"BroadcastError\"){\n"
+                        << indent(0, 2)
+                        << "return soce::crpc::kBroadcastError;\n"
                         << indent(0, 1)
                         << "}\n"
                         << indent(0, 1)
