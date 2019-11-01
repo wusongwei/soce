@@ -39,10 +39,10 @@ namespace log4rel{
         PlainSink();
         ~PlainSink();
 
-        virtual void log(const struct timeval& time, LogLevel level, const std::string& msg);
-        inline void set_max_buffer_size(size_t size) {
+        virtual void log(const char* data, size_t len);
+        inline void set_cap(size_t size) {
             std::lock_guard<std::mutex> lck(mtx_);
-            max_buffer_size_ = size;
+            cap_ = size;
         }
 
         inline void set_file_name(const std::string& name) {
@@ -55,14 +55,10 @@ namespace log4rel{
             file_path_ = path;
         }
 
-        void flush_thread_entry(uint32_t* flush_freq);
-
     private:
         void open_log_file();
         void switch_log_file();
         std::string get_date();
-        void log(const std::string& msg);
-        void flush();
 
     private:
         size_t cap_ = 300 * 1024 * 1024;
@@ -71,17 +67,7 @@ namespace log4rel{
         std::ofstream ofs_;
         std::string file_name_ = "soce";
         std::string file_path_ = ".";
-        std::ostringstream buffer_oss_;
-        std::thread flush_thread_;
         std::mutex mtx_;
-
-        std::atomic<bool> run_{false};
-        size_t buffer_size_ = 0;
-        size_t max_buffer_size_ = 1024;
-
-        uint32_t flush_req_ = 1;
-        std::mutex cv_mtx_;
-        std::condition_variable cv_;
     };
 
 } // namespace log4rel

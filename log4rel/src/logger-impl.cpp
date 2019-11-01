@@ -49,33 +49,39 @@ namespace log4rel{
 
     void LoggerImpl::add_sink(std::shared_ptr<ISink> sink)
     {
-        std::lock_guard<std::mutex> lck(mtx_);
+        lock_.write_lock();
 
         if (default_sink_){
             default_sink_ = false;
             sinks_.clear();
         }
         sinks_.insert(sink);
+
+        lock_.write_unlock();
     }
 
     void LoggerImpl::set_log_level(LogLevel level)
     {
-        std::lock_guard<std::mutex> lck(mtx_);
+        lock_.write_lock();
         level_ = level;
+        lock_.write_unlock();
     }
 
     LogLevel LoggerImpl::get_log_level()
     {
-        std::lock_guard<std::mutex> lck(mtx_);
-        return level_;
+        LogLevel level;
+        lock_.read_lock();
+        level = level_;
+        lock_.read_unlock();
+
+        return level;
     }
 
     void LoggerImpl::reserve_field(LogField field, bool rsv)
     {
-        std::lock_guard<std::mutex> lck(mtx_);
+        lock_.write_lock();
 
         fields_[field] = rsv;
-
         if (fmt_ == kLogFmtSimple){
             switch (field){
             case kLogFieldTime:
@@ -128,11 +134,14 @@ namespace log4rel{
                 break;
             }
         }
+
+        lock_.write_unlock();
     }
 
     void LoggerImpl::set_fmt(LogFmt fmt)
     {
-        mtx_.lock();
+        lock_.write_lock();
+
         fmt_ = fmt;
         if (fmt == kLogFmtSimple){
             log_fmt_ = &LoggerImpl::log_simple_fmt;
@@ -140,7 +149,7 @@ namespace log4rel{
         else if (fmt == kLogFmtJson){
             log_fmt_ = &LoggerImpl::log_json_fmt;
         }
-        mtx_.unlock();
+        lock_.write_unlock();
 
         for (auto& i : fields_){
             reserve_field(i.first, i.second);
@@ -149,52 +158,72 @@ namespace log4rel{
 
     LogFmt LoggerImpl::get_fmt()
     {
-        std::lock_guard<std::mutex> lck(mtx_);
-        return fmt_;
+        LogFmt fmt;
+        lock_.read_lock();
+        fmt = fmt_;
+        lock_.read_unlock();
+
+        return fmt;
     }
 
     void LoggerImpl::set_default_key(const std::string& dkey)
     {
-        std::lock_guard<std::mutex> lck(mtx_);
+        lock_.write_lock();
         default_key_ = dkey;
+        lock_.write_unlock();
     }
 
-    const std::string& LoggerImpl::get_default_key()
+    std::string LoggerImpl::get_default_key()
     {
-        std::lock_guard<std::mutex> lck(mtx_);
-        return default_key_;
+        std::string key;
+        lock_.read_lock();
+        key = default_key_;
+        lock_.read_unlock();
+
+        return key;
     }
 
     int LoggerImpl::add_key_filter(LogFilterType type, const std::string& filter)
     {
-        std::lock_guard<std::mutex> lck(mtx_);
-        return key_filter_.add_filter(type, filter);
+        lock_.write_lock();
+        int rc = key_filter_.add_filter(type, filter);
+        lock_.write_unlock();
+        return rc;
     }
 
     int LoggerImpl::del_key_filter(LogFilterType type, const std::string& filter)
     {
-        std::lock_guard<std::mutex> lck(mtx_);
-        return key_filter_.del_filter(type, filter);
+        lock_.write_lock();
+        int rc = key_filter_.del_filter(type, filter);
+        lock_.write_unlock();
+        return rc;
     }
 
     int LoggerImpl::add_record_filter(LogFilterType type, const std::string& filter)
     {
-        std::lock_guard<std::mutex> lck(mtx_);
-        return record_filter_.add_filter(type, filter);
+        lock_.write_lock();
+        int rc = record_filter_.add_filter(type, filter);
+        lock_.write_unlock();
+
+        return rc;
     }
 
     int LoggerImpl::del_record_filter(LogFilterType type, const std::string& filter)
     {
-        std::lock_guard<std::mutex> lck(mtx_);
-        return record_filter_.del_filter(type, filter);
+        lock_.write_lock();
+        int rc = record_filter_.del_filter(type, filter);
+        lock_.write_unlock();
+
+        return rc;
     }
 
     bool LoggerImpl::match_key(const std::string& key)
     {
-        std::lock_guard<std::mutex> lck(mtx_);
-
-        return (!key_filter_.match(kLogFilterDeny, key)
-                && key_filter_.match(kLogFilterAllow, key));
+        lock_.read_lock();
+        bool rc = (!key_filter_.match(kLogFilterDeny, key)
+                   && key_filter_.match(kLogFilterAllow, key));
+        lock_.read_unlock();
+        return rc;
     }
 
     bool LoggerImpl::match_record(LogLevel level, const std::string& record)
@@ -209,7 +238,7 @@ namespace log4rel{
 
     void LoggerImpl::log(LogLevel level, const std::string& file, const std::string& msg)
     {
-        std::lock_guard<std::mutex> lck(mtx_);
+        lock_.read_lock();
 
         struct timeval tv;
         gettimeofday(&tv, NULL);
@@ -221,8 +250,9 @@ namespace log4rel{
         }
 
         for (auto& sink : sinks_){
-            sink->log(tv, level, slog);
+            sink->log(slog.c_str(), slog.size());
         }
+        lock_.read_unlock();
     }
 
     void LoggerImpl::log_simple_fmt(const struct timeval& tv,
@@ -237,7 +267,7 @@ namespace log4rel{
         (this->*log_pid_)(slog);
         (this->*log_tid_)(slog);
 
-        slog += msg;
+        slog += msg + "\n";
     }
 
     void LoggerImpl::log_json_fmt(const struct timeval& tv,
@@ -256,7 +286,7 @@ namespace log4rel{
 
         slog += "\"@fields\" : {" + msg;
         slog[slog.size()-1] = '}';
-        slog += "}";
+        slog += "}\n";
     }
 
     void LoggerImpl::log_simple_field_time(const struct timeval& tv, string& slog)

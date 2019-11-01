@@ -24,11 +24,11 @@
 #include <unordered_map>
 #include <vector>
 #include <functional>
+#include "base-processor.h"
 #include "service-if.h"
 #include "name-server.h"
 #include "utils/snowflake.h"
 #include "log4rel/logger.h"
-#include "log4rel/thread-sink.h"
 #include "factory.h"
 
 namespace soce{
@@ -39,7 +39,7 @@ namespace crpc{
     class ResponseOut;
     class WorkerThread;
 
-    class Processor : public soce::transport::ProcessorIf
+    class Processor : public BaseProcessor
     {
     public:
         using LoggerInitiator = std::function<void(std::shared_ptr<soce::log4rel::Logger>)>;
@@ -48,8 +48,6 @@ namespace crpc{
         Processor();
         ~Processor() = default;
 
-        virtual size_t get_max_header_size();
-        virtual size_t get_full_pkt_size(const char* data, size_t len);
         virtual void process(uint64_t conn_id, std::string&& data);
         virtual void on_connected(uint64_t conn_id);
         virtual void on_error(uint64_t conn_id);
@@ -73,7 +71,6 @@ namespace crpc{
         void handle_response_out(int fd);
         void append_null_resp(uint64_t conn_id, int64_t req_id, int32_t tid);
         void register_to_ns();
-        int send_req(uint64_t conn_id, const char* data, size_t len);
         int run_thread_shared_service(size_t cores, int& tid);
         int run_thread_per_service(int& tid);
 
@@ -97,10 +94,12 @@ namespace crpc{
         /* map<reqid, pair<conn_id, tid>> */
         std::unordered_map<int64_t, std::pair<uint64_t, int>> reqid_map_;
 
+        /* in CrpcReqHeader */
+        std::vector<uint32_t> service_index_{0, 1};
+
+        /* in CrpcRespHeader */
         std::vector<uint32_t> type_index_{0, 0};
         std::vector<uint32_t> reqid_index_{0, 1};
-        std::vector<uint32_t> tid_index_{0, 2};
-        std::vector<uint32_t> service_index_{0, 1};
     };
 
 } // namespace crpc

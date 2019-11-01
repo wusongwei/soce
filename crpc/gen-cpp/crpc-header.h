@@ -1,10 +1,12 @@
-#ifndef _crpc_header_1428064119_H_
-#define _crpc_header_1428064119_H_
+#ifndef _crpc_header_1297772085_H_
+#define _crpc_header_1297772085_H_
 
 #include <string>
 #include <bitset>
 #include <stdint.h>
 #include <unordered_map>
+#include "proto/fads-message.h"
+#include "proto/fads-message.h"
 #include "proto/soce-proto.h"
 #include "proto/type-tree.h"
 
@@ -16,16 +18,22 @@ namespace soce{ namespace crpc{
 
 typedef enum{
     kRpcTypeReq,
-    kRpcTypeResp,
+    kRpcTypeNullReq,
     kRpcTypeCondCast,
     kRpcTypeUncondCast,
+    kRpcTypeResp,
 }RpcType;
 
 typedef enum{
     kRpcStatusOK,
+    kRpcStatusIoError,
     kRpcStatusProtoError,
-    kRpcStatusNoService,
+    kRpcStatusServiceNotAvailable,
+    kRpcStatusInternalError,
+    kRpcStatusTimeout,
     kRpcStatusAOPFailed,
+    kRpcStatusBroadcastOk,
+    kRpcStatusBroadcastError,
 }RpcStatus;
 
 class CrpcReqHeaderTypeTree{
@@ -33,7 +41,7 @@ public:
     CrpcReqHeaderTypeTree(soce::proto::TypeTree& type_tree);
 };
 
-class CrpcReqHeader{
+class CrpcReqHeader : public soce::fads::FadsMessage{
 public:
     void set_type(const RpcType& _type){
         type = _type;
@@ -92,80 +100,57 @@ public:
         return status_[2];
     }
 
-    void set_req_id(const int64_t& _req_id){
-        req_id = _req_id;
+    void set_req_id(const char _req_id[8]){
+        memcpy(req_id, _req_id, 8);
         status_[3] = true;
     }
-    void set_req_id(int64_t&& _req_id){
-        req_id = std::move(_req_id);
-        status_[3] = true;
-    }
-    const int64_t& get_req_id() const {
+    const char* get_req_id() const {
         return req_id;
     }
-    int64_t& mutable_req_id(){
+    char* mutable_req_id(){
         status_[3] = true;
         return req_id;
     }
-    bool has_req_id() const{
+    bool IsSetreq_id(){
         return status_[3];
-    }
-
-    void set_tid(const int32_t& _tid){
-        tid = _tid;
-        status_[4] = true;
-    }
-    void set_tid(int32_t&& _tid){
-        tid = std::move(_tid);
-        status_[4] = true;
-    }
-    const int32_t& get_tid() const {
-        return tid;
-    }
-    int32_t& mutable_tid(){
-        status_[4] = true;
-        return tid;
-    }
-    bool has_tid() const{
-        return status_[4];
     }
 
     void set_target_addr(const string& _target_addr){
         target_addr = _target_addr;
-        status_[5] = true;
+        status_[4] = true;
     }
     void set_target_addr(string&& _target_addr){
         target_addr = std::move(_target_addr);
-        status_[5] = true;
+        status_[4] = true;
     }
     const string& get_target_addr() const {
         return target_addr;
     }
     string& mutable_target_addr(){
-        status_[5] = true;
+        status_[4] = true;
         return target_addr;
     }
     bool has_target_addr() const{
-        return status_[5];
+        return status_[4];
     }
 
     void set_ext(const unordered_map<string, string>& _ext){
         ext = _ext;
-        status_[6] = true;
+        status_[5] = true;
     }
     void set_ext(unordered_map<string, string>&& _ext){
         ext = std::move(_ext);
-        status_[6] = true;
+        status_[5] = true;
     }
     const unordered_map<string, string>& get_ext() const {
         return ext;
     }
     unordered_map<string, string>& mutable_ext(){
-        status_[6] = true;
+        status_[5] = true;
         return ext;
     }
     bool has_ext() const{
-        return status_[6];
+        return status_[5];
     }
 
 public:
@@ -181,8 +166,6 @@ public:
         if (method != rhs.method)
             return false;
         if (req_id != rhs.req_id)
-            return false;
-        if (tid != rhs.tid)
             return false;
         if (target_addr != rhs.target_addr)
             return false;
@@ -201,8 +184,7 @@ public:
             ^ std::hash<int32_t>()(type)
             ^ std::hash<string>()(service)
             ^ std::hash<string>()(method)
-            ^ std::hash<int64_t>()(req_id)
-            ^ std::hash<int32_t>()(tid)
+            ^ std::hash<string>()(string(req_id,8))
             ^ std::hash<string>()(target_addr)
             ^ [&, this]{
                 size_t code = 0;
@@ -216,8 +198,8 @@ public:
 
     size_t read(soce::proto::ProtoIf* proto, bool required, bool with_type);
     size_t write(soce::proto::ProtoIf* proto, bool required, bool has_set, bool with_type = true) const;
-    size_t deserialize(soce::proto::ProtoIf* proto);
-    size_t serialize(soce::proto::ProtoIf* proto) const;
+    virtual size_t deserialize(soce::proto::ProtoIf* proto);
+    virtual size_t serialize(soce::proto::ProtoIf* proto) const;
     static soce::proto::TypeTree* get_type_tree();
 
 private:
@@ -225,14 +207,13 @@ private:
     RpcType type;
     string service;
     string method;
-    int64_t req_id;
-    int32_t tid;
+    char req_id[8];
     string target_addr;
     unordered_map<string, string> ext;
 
     /* for optional */
-    bitset<7> attrs_ = 31;
-    bitset<7> status_;
+    bitset<6> attrs_ = 15;
+    bitset<6> status_;
 
 public:
     static CrpcReqHeaderTypeTree s_type_tree;
@@ -250,7 +231,7 @@ public:
     CrpcRespHeaderTypeTree(soce::proto::TypeTree& type_tree);
 };
 
-class CrpcRespHeader{
+class CrpcRespHeader : public soce::fads::FadsMessage{
 public:
     void set_type(const RpcType& _type){
         type = _type;
@@ -271,80 +252,57 @@ public:
         return status_[0];
     }
 
-    void set_req_id(const int64_t& _req_id){
-        req_id = _req_id;
+    void set_req_id(const char _req_id[8]){
+        memcpy(req_id, _req_id, 8);
         status_[1] = true;
     }
-    void set_req_id(int64_t&& _req_id){
-        req_id = std::move(_req_id);
-        status_[1] = true;
-    }
-    const int64_t& get_req_id() const {
+    const char* get_req_id() const {
         return req_id;
     }
-    int64_t& mutable_req_id(){
+    char* mutable_req_id(){
         status_[1] = true;
         return req_id;
     }
-    bool has_req_id() const{
+    bool IsSetreq_id(){
         return status_[1];
-    }
-
-    void set_tid(const int32_t& _tid){
-        tid = _tid;
-        status_[2] = true;
-    }
-    void set_tid(int32_t&& _tid){
-        tid = std::move(_tid);
-        status_[2] = true;
-    }
-    const int32_t& get_tid() const {
-        return tid;
-    }
-    int32_t& mutable_tid(){
-        status_[2] = true;
-        return tid;
-    }
-    bool has_tid() const{
-        return status_[2];
     }
 
     void set_status(const RpcStatus& _status){
         status = _status;
-        status_[3] = true;
+        status_[2] = true;
     }
     void set_status(RpcStatus&& _status){
         status = std::move(_status);
-        status_[3] = true;
+        status_[2] = true;
     }
     const RpcStatus& get_status() const {
         return status;
     }
     RpcStatus& mutable_status(){
-        status_[3] = true;
+        status_[2] = true;
         return status;
     }
     bool has_status() const{
-        return status_[3];
+        return status_[2];
     }
 
     void set_ext(const unordered_map<string, string>& _ext){
         ext = _ext;
-        status_[4] = true;
+        status_[3] = true;
     }
     void set_ext(unordered_map<string, string>&& _ext){
         ext = std::move(_ext);
-        status_[4] = true;
+        status_[3] = true;
     }
     const unordered_map<string, string>& get_ext() const {
         return ext;
     }
     unordered_map<string, string>& mutable_ext(){
-        status_[4] = true;
+        status_[3] = true;
         return ext;
     }
     bool has_ext() const{
-        return status_[4];
+        return status_[3];
     }
 
 public:
@@ -356,8 +314,6 @@ public:
         if (type != rhs.type)
             return false;
         if (req_id != rhs.req_id)
-            return false;
-        if (tid != rhs.tid)
             return false;
         if (status != rhs.status)
             return false;
@@ -374,8 +330,7 @@ public:
         size_t hash_code = 0;
         hash_code = 0
             ^ std::hash<int32_t>()(type)
-            ^ std::hash<int64_t>()(req_id)
-            ^ std::hash<int32_t>()(tid)
+            ^ std::hash<string>()(string(req_id,8))
             ^ std::hash<int32_t>()(status)
             ^ [&, this]{
                 size_t code = 0;
@@ -389,21 +344,20 @@ public:
 
     size_t read(soce::proto::ProtoIf* proto, bool required, bool with_type);
     size_t write(soce::proto::ProtoIf* proto, bool required, bool has_set, bool with_type = true) const;
-    size_t deserialize(soce::proto::ProtoIf* proto);
-    size_t serialize(soce::proto::ProtoIf* proto) const;
+    virtual size_t deserialize(soce::proto::ProtoIf* proto);
+    virtual size_t serialize(soce::proto::ProtoIf* proto) const;
     static soce::proto::TypeTree* get_type_tree();
 
 private:
     /* class members */
     RpcType type;
-    int64_t req_id;
-    int32_t tid;
+    char req_id[8];
     RpcStatus status;
     unordered_map<string, string> ext;
 
     /* for optional */
-    bitset<5> attrs_ = 15;
-    bitset<5> status_;
+    bitset<4> attrs_ = 7;
+    bitset<4> status_;
 
 public:
     static CrpcRespHeaderTypeTree s_type_tree;
@@ -421,7 +375,7 @@ public:
     CrpcErrorRespTypeTree(soce::proto::TypeTree& type_tree);
 };
 
-class CrpcErrorResp{
+class CrpcErrorResp : public soce::fads::FadsMessage{
 public:
     void set_header(const CrpcRespHeader& _header){
         header = _header;
@@ -466,8 +420,8 @@ public:
 
     size_t read(soce::proto::ProtoIf* proto, bool required, bool with_type);
     size_t write(soce::proto::ProtoIf* proto, bool required, bool has_set, bool with_type = true) const;
-    size_t deserialize(soce::proto::ProtoIf* proto);
-    size_t serialize(soce::proto::ProtoIf* proto) const;
+    virtual size_t deserialize(soce::proto::ProtoIf* proto);
+    virtual size_t serialize(soce::proto::ProtoIf* proto) const;
     static soce::proto::TypeTree* get_type_tree();
 
 private:
@@ -485,6 +439,79 @@ public:
 struct hash_CrpcErrorResp
 {
     size_t operator()(const CrpcErrorResp& rhs) const{
+        return rhs(rhs);
+    }
+};
+
+class CrpcRequestTypeTree{
+public:
+    CrpcRequestTypeTree(soce::proto::TypeTree& type_tree);
+};
+
+class CrpcRequest : public soce::fads::FadsMessage{
+public:
+    void set_header(const CrpcReqHeader& _header){
+        header = _header;
+        status_[0] = true;
+    }
+    void set_header(CrpcReqHeader&& _header){
+        header = std::move(_header);
+        status_[0] = true;
+    }
+    const CrpcReqHeader& get_header() const {
+        return header;
+    }
+    CrpcReqHeader& mutable_header(){
+        status_[0] = true;
+        return header;
+    }
+    bool has_header() const{
+        return status_[0];
+    }
+
+public:
+    /* operators */
+    CrpcRequest() = default;
+    CrpcRequest(const CrpcRequest&) = default;
+    CrpcRequest& operator=(const CrpcRequest& rhs) = default;
+    bool operator==(const CrpcRequest& rhs) const{
+        if (header != rhs.header)
+            return false;
+        return true;
+    }
+
+    bool operator!=(const CrpcRequest& rhs) const{
+        return !(*this == rhs);
+    }
+
+    size_t operator()(const CrpcRequest& rhs) const{
+        size_t hash_code = 0;
+        hash_code = 0
+            ^ header(header);
+        return hash_code;
+    }
+
+    size_t read(soce::proto::ProtoIf* proto, bool required, bool with_type);
+    size_t write(soce::proto::ProtoIf* proto, bool required, bool has_set, bool with_type = true) const;
+    virtual size_t deserialize(soce::proto::ProtoIf* proto);
+    virtual size_t serialize(soce::proto::ProtoIf* proto) const;
+    static soce::proto::TypeTree* get_type_tree();
+
+private:
+    /* class members */
+    CrpcReqHeader header;
+
+    /* for optional */
+    bitset<1> attrs_ = 0;
+    bitset<1> status_;
+
+public:
+    static CrpcRequestTypeTree s_type_tree;
+};
+
+struct hash_CrpcRequest
+{
+    size_t operator()(const CrpcRequest& rhs) const{
         return rhs(rhs);
     }
 };

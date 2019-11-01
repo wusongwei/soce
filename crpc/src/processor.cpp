@@ -40,24 +40,6 @@ namespace crpc{
 
     Processor::Processor()
     {
-        SAsyncLogger.init_thread_logger();
-    }
-
-    size_t Processor::get_max_header_size()
-    {
-        return 4;
-    }
-
-    size_t Processor::get_full_pkt_size(const char* data, size_t len)
-    {
-        uint32_t size = 0;
-        if (len == 4){
-            for (size_t i = 0; i < 4; ++i){
-                size = (size << 8) | (*(data + i) & 0xFF);
-            }
-        }
-
-        return size + 4;
     }
 
     void Processor::process(uint64_t conn_id, std::string&& data)
@@ -72,11 +54,28 @@ namespace crpc{
         }
 
         if (rpc_type == kRpcTypeResp){
-            int64_t req_id = 0;
-            int32_t tid = 0;
-            if (dg.get_int64(reqid_index_, req_id)
-                || dg.get_int32(tid_index_, tid)){
+            char p_req_id[8];
+            if (dg.get_bytes(reqid_index_, p_req_id, 8)){
                 SOCE_ERROR << _S("conn_id", conn_id) << _S("type", "response") << _D("protocol error");
+                return;
+            }
+
+            int64_t req_id = *(int64_t*)p_req_id;
+            int32_t tid = 0;
+            auto it = reqid_map_.find(req_id);
+            if (it != reqid_map_.end()){
+                tid = it->second.second;
+                auto it_conn_id = conn_id_map_.find(it->second.first);
+                if (it_conn_id != conn_id_map_.end()){
+                    auto it_tid = it_conn_id->second.find(it->second.second);
+                    if (it_tid != it_conn_id->second.end()){
+                        it_tid->second.erase(req_id);
+                    }
+                }
+
+                reqid_map_.erase(it);
+            }else{
+                SOCE_ERROR<< _S("conn_id", conn_id) << _S("NoCachedReqid", req_id);
                 return;
             }
 
@@ -89,19 +88,6 @@ namespace crpc{
             CRPC_DEBUG << _S("conn_id", conn_id) << _S("type", "response") << _S("req_id", req_id) << _S("tid", tid);
 
             iter->second->append_resp(conn_id, req_id, std::move(data));
-
-            auto it = reqid_map_.find(req_id);
-            if (it != reqid_map_.end()){
-                auto it_conn_id = conn_id_map_.find(it->second.first);
-                if (it_conn_id != conn_id_map_.end()){
-                    auto it_tid = it_conn_id->second.find(it->second.second);
-                    if (it_tid != it_conn_id->second.end()){
-                        it_tid->second.erase(req_id);
-                    }
-                }
-
-                reqid_map_.erase(it);
-            }
         }
         else{
             string service;
@@ -220,21 +206,6 @@ namespace crpc{
         }
     }
 
-    int Processor::send_req(uint64_t conn_id, const char* data, size_t len)
-    {
-        char buff[4];
-        for (size_t i =0; i<4; ++i){
-            buff[i] = (len >> (3-i)*8) & 0xff;
-        }
-
-        if (transport_->send(conn_id, buff, 4)
-            || transport_->send(conn_id, data, len)){
-            return -1;
-        }
-
-        return 0;
-    }
-
     void Processor::watch_request_out()
     {
         transport_->watch(req_out_->get_consumer_fd(),
@@ -257,15 +228,15 @@ namespace crpc{
     {
         (void) fd;
 
-        soce::utils::DQVector<RequestOut::QueueData> reqs;
+        soce::utils::FQVector<RequestOut::QueueData> reqs;
         if (req_out_->try_consume(reqs)){
             return;
         }
 
         for (auto& i : reqs){
             std::set<uint64_t>& conn_ids = i.conn_ids_;
-            int32_t& tid = i.tid_;
             int64_t& req_id = i.req_id_;
+            int32_t& tid = i.tid_;
             std::string& data = i.data_;
 
             if (conn_ids.empty()){
@@ -274,8 +245,7 @@ namespace crpc{
             }
 
             for (auto conn_id : i.conn_ids_) {
-                if (conn_id == 0
-                    || send_req(conn_id, data.c_str(), data.size())) {
+                if (conn_id == 0 || send(conn_id, data.c_str(), data.size())) {
                     append_null_resp(conn_id, req_id, tid);
                     continue;
                 }
@@ -298,35 +268,25 @@ namespace crpc{
     {
         (void) fd;
 
-        soce::utils::DQVector<ResponseOut::QueueData> resps;
+        soce::utils::FQVector<ResponseOut::QueueData> resps;
         if (resp_out_->try_consume(resps)){
             return;
         }
 
         for (auto& i : resps){
-            char buff[4];
-            size_t len = i.data_.size();
-            for (size_t i =0; i<4; ++i){
-                buff[i] = (len >> (3-i)*8) & 0xff;
-            }
-            transport_->send(i.conn_id_, buff, 4);
-            transport_->send(i.conn_id_, i.data_.c_str(), i.data_.size());
+            send(i.conn_id_, i.data_.c_str(), i.data_.size());
         }
     }
 
     int Processor::run()
     {
-        size_t cores = 0;
-        if (!thread_shared_services_.empty()){
-            cores = shared_threads_;
-            if (cores == 0){
-                cores = (size_t)get_nprocs();
-            }
+        size_t cores = shared_threads_;
+        if (cores == 0){
+            cores = 2 * (size_t)get_nprocs() + 1;
         }
 
-        size_t thread_num = cores + thread_per_services_.size();
-        req_out_.reset(new RequestOut(thread_num));
-        resp_out_.reset(new ResponseOut(thread_num));
+        req_out_.reset(new RequestOut());
+        resp_out_.reset(new ResponseOut());
         if (!req_out_->good() || !resp_out_->good()){
             return -1;
         }
@@ -346,7 +306,6 @@ namespace crpc{
             i.second->run();
         }
 
-        SAsyncLogger.start();
         watch_request_out();
         watch_response_out();
         register_to_ns();
@@ -356,10 +315,6 @@ namespace crpc{
 
     int Processor::run_thread_shared_service(size_t cores, int& tid)
     {
-        if (thread_shared_services_.empty()){
-            return 0;
-        }
-
         std::shared_ptr<RequestIn> req_in(new RequestIn(cores));
         std::shared_ptr<ResponseIn> resp_in(new ResponseIn(cores));
         if (!req_in->good() || !resp_in->good()){

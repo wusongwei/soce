@@ -18,7 +18,6 @@
 */
 
 #include <sstream>
-#include <iostream>
 #include <fstream>
 #include <string.h>
 #include <stdlib.h>
@@ -194,7 +193,9 @@ int main(int argc, char* argv[])
         service_header_file.open(service_header_file_name);
         ostringstream s;
         add_header_protection_begin(name + "_service", s);
-        s << "#include \"crpc/base-service.h\"\n\n";
+        s << "#include \"crpc/base-service.h\"\n"
+            "#include \"crpc/client/base-sync-client.h\"\n"
+            "#include \"crpc/client/base-cort-client.h\"\n\n";
         add_ns_begin(s);
         add_ns_end(oss);
         add_header_protection_end(oss);

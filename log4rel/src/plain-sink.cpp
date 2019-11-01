@@ -20,7 +20,6 @@
 #include <time.h>
 #include <sstream>
 #include <unistd.h>
-#include <iostream>
 #include <chrono>
 #include "log4rel/plain-sink.h"
 using namespace std;
@@ -30,59 +29,29 @@ namespace log4rel{
 
     PlainSink::PlainSink()
     {
-        flush_thread_ = std::thread(&PlainSink::flush_thread_entry, this, &flush_req_);
-        while(!run_);
     }
 
     PlainSink::~PlainSink()
     {
-        {
-            std::unique_lock<std::mutex> lck(cv_mtx_);
-            run_.store(false);
-            cv_.notify_one();
-        }
-
-        if (flush_thread_.joinable()){
-            flush_thread_.join();
-        }
-
-        flush();
     }
 
-    void PlainSink::log(const struct timeval& time, LogLevel level, const std::string& msg)
+    void PlainSink::log(const char* data, size_t len)
     {
-        (void) time;
-        (void) level;
+        std::unique_lock<std::mutex> lck(mtx_);
+
         string cur_date = get_date();
 
         if (cur_date_ != cur_date){
             cur_date_ = cur_date;
             open_log_file();
         }
-        else if (msg.size() + cur_size_ > cap_){
+        else if (len + cur_size_ > cap_){
             switch_log_file();
             open_log_file();
         }
 
-        log(msg);
-        cur_size_ += msg.size();
-    }
-
-    void PlainSink::flush_thread_entry(uint32_t* flush_freq)
-    {
-        run_.store(true);
-
-        while (1){
-            std::unique_lock<std::mutex> lck(cv_mtx_);
-            if (!run_){
-                break;
-            }
-            cv_.wait_for(lck, std::chrono::seconds(*flush_freq));
-
-            mtx_.lock();
-            flush();
-            mtx_.unlock();
-        }
+        ofs_.write(data, len);
+        cur_size_ += len;
     }
 
     void PlainSink::open_log_file()
@@ -131,25 +100,6 @@ namespace log4rel{
         char sTmp[1024];
         strftime(sTmp,sizeof(sTmp),"%Y%m%d",&curr);
         return move(string(sTmp));
-    }
-
-    void PlainSink::log(const std::string& msg)
-    {
-        std::lock_guard<std::mutex> lck(mtx_);
-        buffer_oss_ << msg << endl;
-        buffer_size_ += msg.size();
-        if (buffer_size_ > max_buffer_size_){
-            flush();
-        }
-   }
-
-    void PlainSink::flush()
-    {
-        ofs_ << buffer_oss_.str();
-        buffer_oss_.clear();
-        buffer_oss_.str("");
-        buffer_size_ = 0;
-        ofs_.flush();
     }
 
 } // namespace log4rel

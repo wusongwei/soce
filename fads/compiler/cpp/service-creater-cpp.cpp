@@ -35,12 +35,14 @@ namespace compiler{
     void ServiceCreaterCpp::gen_header(const unordered_map<string, SCService>& services, ostringstream& oss)
     {
         gen_server_header(services, oss);
+        gen_sync_client_header(services, oss);
         gen_cort_client_header(services, oss);
     }
 
     void ServiceCreaterCpp::gen_impl(const unordered_map<string, SCService>& services, ostringstream& oss)
     {
         gen_server_impl(services, oss);
+        gen_sync_client_impl(services, oss);
         gen_cort_client_impl(services, oss);
     }
 
@@ -135,96 +137,16 @@ namespace compiler{
         }
     }
 
+    void ServiceCreaterCpp::gen_sync_client_header(const unordered_map<string, SCService>& services, ostringstream& oss)
+    {
+        gen_client_header(services, "Sync", oss);
+    }
+
     void ServiceCreaterCpp::gen_cort_client_header(const unordered_map<string, SCService>& services, ostringstream& oss)
     {
-        for (auto& i : services){
-            oss << "class "
-                << i.first
-                << "CortClient\n{\npublic:\n";
-
-            for (auto& j : i.second.get_methods()){
-                bool has_return = true;
-                bool has_resp = true;
-                if (j.second.get_return_type() == "void"
-                    || j.second.get_return_type() == "condcast"
-                    || j.second.get_return_type() == "uncondcast"){
-                    has_return = false;
-                }
-                if (j.second.get_return_type() == "null"){
-                    has_return = false;
-                    has_resp = false;
-                }
-
-                oss << indent(0, 1);
-                if (has_resp){
-                    oss << "int ";
-                }
-                else{
-                    oss << "void ";
-                }
-                oss << j.first
-                    << "(";
-
-                bool with_comma = false;
-                if (has_return){
-                    with_comma = true;
-                    oss << j.second.get_return_type()
-                        << "& _return";
-                }
-                bool skip = true;
-                for (auto& x : j.second.get_params()){
-                    if (skip){
-                        skip = false;
-                        continue;
-                    }
-
-                    if (with_comma){
-                        oss << ", ";
-                    }
-                    else{
-                        with_comma = true;
-                    }
-                    oss << "const " << x.first << "& " << x.second;
-                }
-                oss << ");\n";
-            }
-
-            oss << indent(0, 1)
-                << "void set_timeout(uint32_t timeout){\n"
-                << indent(0, 2)
-                << "timeout_ = timeout;\n"
-                << indent(0, 1)
-                << "}\n\n";
-
-            for (auto& j : i.second.get_methods()){
-                oss << indent(0, 1)
-                    << "void set_"
-                    << j.first
-                    << "_timeout(uint32_t timeout){\n"
-                    << indent(0, 2)
-                    << "method_timeout_[\""
-                    << j.first
-                    << "\"] = timeout;\n"
-                    << indent(0, 1)
-                    << "}\n\n";
-            }
-
-            oss << indent(0, 1)
-                << "void set_target_addr(const std::string& addr){\n"
-                << indent(0, 2)
-                << "target_addr_ = addr;"
-                << indent(0, 1)
-                << "}\n\nprivate:\n"
-                << indent(0, 1)
-                << "uint32_t timeout_ = 0;\n"
-                << indent(0, 1)
-                << "std::unordered_map<std::string, uint32_t> method_timeout_;\n"
-                << indent(0, 1)
-                << "std::string target_addr_;\n"
-                << indent(0, 0)
-                << "};\n\n";
-        }
+        gen_client_header(services, "Cort", oss);
     }
+
 
     void ServiceCreaterCpp::gen_server_impl(const unordered_map<string, SCService>& services, ostringstream& oss)
     {
@@ -269,48 +191,27 @@ namespace compiler{
                     << j.first
                     << "_handler(const std::string& data){\n"
                     << indent(0, 1)
-                    << "std::string rc;\n"
-                    << indent(0, 1)
                     << i.first
                     << j.first
-                    << "Req req;\n"
-                    << indent(0, 1)
-                    << "soce::proto::BinaryProto bp;\n"
-                    << indent(0, 1)
-                    << "bp.init(const_cast<char*>(data.c_str() + 4), data.size() - 4);\n"
-                    << indent(0, 1)
-                    << "if (req.deserialize((soce::proto::ProtoIf*)&bp) == 0){\n"
-                    << indent(0, 2)
-                    << "return rc;\n"
-                    << indent(0, 1)
-                    << "}\n\n";
-
-                if (has_resp){
+                    << "Req req;\n";
+                if (has_resp) {
                     oss << indent(0, 1)
                         << i.first
                         << j.first
                         << "Resp resp;\n"
                         << indent(0, 1)
-                        << "resp.mutable_header().set_type(soce::crpc::kRpcTypeResp);\n"
-                        << indent(0, 1)
-                        << "resp.mutable_header().set_req_id(req.get_header().get_req_id());\n"
-                        << indent(0, 1)
-                        << "resp.mutable_header().set_tid(req.get_header().get_tid());\n"
-                        << indent(0, 1)
-                        << "resp.mutable_header().set_status(soce::crpc::kRpcStatusOK);\n";
+                        << "return handle_request(data, \""
+                        << i.first
+                        << "\", \""
+                        << j.first
+                        << "\", &req, req.mutable_header(), &resp, resp.mutable_header(), [&]{\n"
+                        << indent(0, 2);
+                }else{
+                    oss << indent(0, 1)
+                        << "return handle_request(data, &req, req.mutable_header(), [&]{\n"
+                        << indent(0, 2);
                 }
 
-                oss << indent(0, 1)
-                    << "rc = SInterceptor.do_before_itcptor(req.mutable_header(), \""
-                    << i.first
-                    << "\", \""
-                    << j.first
-                    << "\", false);\n"
-                    << indent(0, 1)
-                    << "if (rc.empty()){\n";
-                oss << indent(0, 2)
-                    << "raw_req_ = (void*)&req;\n"
-                    << indent(0, 2);
                 if (has_return){
                     oss << "resp.mutable_result() = ";
                 }
@@ -337,47 +238,35 @@ namespace compiler{
                         << "()";
                 }
                 oss << ");\n"
-                    << indent(0, 2)
-                    << "raw_req_ = NULL;\n";
-                if (has_resp){
-                    oss << indent(0, 2)
-                        << "rc = SInterceptor.do_after_itcptor(resp.mutable_header(), \""
-                        << i.first
-                        << "\", \""
-                        << j.first
-                        << "\", false);\n"
-                        << indent(0, 2)
-                        << "if (rc.empty()){\n"
-                        << indent(0, 3)
-                        << "soce::proto::BinaryProto out;\n"
-                        << indent(0, 3)
-                        << "if (resp.serialize((soce::proto::ProtoIf*)&out)){\n"
-                        << indent(0, 4)
-                        << "rc.assign(out.data(), out.size());\n"
-                        << indent(0, 3)
-                        << "}\n"
-                        << indent(0, 2)
-                        << "}\n";
-                }
-                oss << indent(0, 1)
-                    << "}\n";
-
-                if (!has_resp){
-                    oss << indent(0, 1)
-                        << "rc.clear();\n";
-                }
-                oss << indent(0, 1)
-                    << "return std::move(rc);\n"
+                    << indent(0, 1)
+                    << "});\n"
                     << indent(0, 0)
                     << "}\n\n";
             }
         }
     }
 
+    void ServiceCreaterCpp::gen_sync_client_impl(const unordered_map<string, SCService>& services, ostringstream& oss)
+    {
+        gen_client_impl(services, "Sync", oss);
+    }
+
     void ServiceCreaterCpp::gen_cort_client_impl(const unordered_map<string, SCService>& services, ostringstream& oss)
     {
-        oss << "\n";
+        gen_client_impl(services, "Cort", oss);
+    }
+
+    void ServiceCreaterCpp::gen_client_header(const unordered_map<string, SCService>& services,
+                                              const std::string& client_type, ostringstream& oss)
+    {
         for (auto& i : services){
+            oss << "class "
+                << i.first
+                << client_type
+                << "Client : public soce::crpc::Base"
+                << client_type
+                << "Client\n{\npublic:\n";
+
             for (auto& j : i.second.get_methods()){
                 bool has_return = true;
                 bool has_resp = true;
@@ -391,23 +280,94 @@ namespace compiler{
                     has_resp = false;
                 }
 
+                oss << indent(0, 1);
+                if (has_resp){
+                    oss << "soce::crpc::RpcStatus ";
+                }
+                else{
+                    oss << "void ";
+                }
+                oss << j.first
+                    << "(";
+
+                bool with_comma = false;
+                if (has_return){
+                    with_comma = true;
+                    oss << j.second.get_return_type()
+                        << "& _result";
+                }
+                bool skip = true;
+                for (auto& x : j.second.get_params()){
+                    if (skip){
+                        skip = false;
+                        continue;
+                    }
+
+                    if (with_comma){
+                        oss << ", ";
+                    }
+                    else{
+                        with_comma = true;
+                    }
+                    oss << "const " << x.first << "& " << x.second;
+                }
+                oss << ");\n";
+            }
+
+            for (auto& j : i.second.get_methods()){
+                oss << indent(0, 1)
+                    << "void set_"
+                    << j.first
+                    << "_timeout(uint32_t timeout)\n"
+                    << indent(0, 1)
+                    << "{\n"
+                    << indent(0, 2)
+                    << "method_timeout_[\""
+                    << j.first
+                    << "\"] = timeout;\n"
+                    << indent(0, 1)
+                    << "}\n\n";
+            }
+
+            oss << "};\n\n";
+        }
+    }
+
+    void ServiceCreaterCpp::gen_client_impl(const unordered_map<string, SCService>& services, const std::string& client_type, ostringstream& oss)
+    {
+        oss << "\n";
+        for (auto& i : services){
+            for (auto& j : i.second.get_methods()){
+                bool has_result = true;
+                bool has_resp = true;
+                if (j.second.get_return_type() == "void"
+                    || j.second.get_return_type() == "condcast"
+                    || j.second.get_return_type() == "uncondcast"){
+                    has_result = false;
+                }
+                if (j.second.get_return_type() == "null"){
+                    has_result = false;
+                    has_resp = false;
+                }
+
                 oss << indent(0, 0);
                 if (has_resp){
-                    oss << "int ";
+                    oss << "soce::crpc::RpcStatus ";
                 }
                 else{
                     oss << "void ";
                 }
 
                 oss << i.first
-                    << "CortClient::"
+                    << client_type
+                    << "Client::"
                     << j.first
                     << "(";
                 bool with_comma = false;
-                if (has_return){
+                if (has_result){
                     with_comma = true;
                     oss << j.second.get_return_type()
-                        << "& _return";
+                        << "& _result";
                 }
                 bool skip = true;
                 for (auto& x : j.second.get_params()){
@@ -427,19 +387,25 @@ namespace compiler{
 
                 oss << ")\n{\n"
                     << indent(0, 1)
-                    << "soce::crpc::WorkerThread* _dthread = soce::crpc::WorkerThread::s_self;\n"
-                    << indent(0, 1)
-                    << "int64_t _req_id = _dthread->get_reqid();\n"
-                    << indent(0, 1)
-                    << "int64_t _tid = _dthread->get_tid();\n"
+                    << "int64_t _req_id = 0;\n"
                     << indent(0, 1)
                     << "soce::crpc::RpcType _type = soce::crpc::kRpcTypeReq;\n"
                     << indent(0, 1)
                     << i.first
                     << j.first
                     << "Req _req;\n";
+                if (has_resp) {
+                    oss << indent(0, 1)
+                        << i.first
+                        << j.first
+                        << "Resp _resp;\n";
+                }
 
-                if (j.second.get_return_type() == "condcast"){
+                if (j.second.get_return_type() == "null"){
+                    oss << indent(0, 1)
+                        << "_type = soce::crpc::kRpcTypeNullReq;\n";
+                }
+                else if (j.second.get_return_type() == "condcast"){
                     oss << indent(0, 1)
                         << "_type = soce::crpc::kRpcTypeCondCast;\n";
                 }
@@ -447,27 +413,6 @@ namespace compiler{
                     oss << indent(0, 1)
                         << "_type = soce::crpc::kRpcTypeUncondCast;\n";
                 }
-
-                oss << indent(0, 1)
-                    << "_req.mutable_header().set_type(_type);\n"
-                    << indent(0, 1)
-                    << "_req.mutable_header().set_service(\""
-                    << i.first
-                    << "\");\n"
-                    << indent(0, 1)
-                    << "_req.mutable_header().set_method(\""
-                    << j.first
-                    << "\");\n"
-                    << indent(0, 1)
-                    << "_req.mutable_header().set_req_id(_req_id);\n"
-                    << indent(0, 1)
-                    << "_req.mutable_header().set_tid(_tid);\n"
-                    << indent(0, 1)
-                    << "if (!target_addr_.empty()){\n"
-                    << indent(0, 2)
-                    << "_req.mutable_header().set_target_addr(target_addr_);\n"
-                    << indent(0, 1)
-                    << "}\n";
 
                 skip = true;
                 for (auto& x : j.second.get_params()){
@@ -483,131 +428,36 @@ namespace compiler{
                         << ");\n";
                 }
 
-                oss << indent(0, 1)
-                    << "std::string rc = SInterceptor.do_before_itcptor(_req.mutable_header(), \""
-                    << i.first
-                    << "\", \""
-                    << j.first
-                    << "\", true);\n"
-                    << indent(0, 1)
-                    << "soce::proto::BinaryProto _bp;\n"
-                    << indent(0, 1)
-                    << "std::string* resp_str = nullptr;\n"
-                    << indent(0, 1)
-                    << "(void)resp_str;\n"
-                    << indent(0, 1)
-                    << "if (!rc.empty()){\n"
-                    << indent(0, 2)
-                    << "resp_str = &rc;\n"
-                    << indent(0, 1)
-                    << "}\n"
-                    << indent(0, 1)
-                    << "else{\n"
-                    << indent(0, 2)
-                    << "if (_req.serialize((soce::proto::ProtoIf*)&_bp) == 0){\n"
-                    << indent(0, 3);
-
                 if (has_resp){
-                    oss << "return soce::crpc::kReqProtoError;\n";
-                }
-                else{
-                    oss << "return;\n";
-                }
-
-                oss << indent(0, 2)
-                    << "}\n"
-                    << indent(0, 2)
-                    << "_dthread->append_req(_req.get_header(), std::move(std::string(_bp.data(), _bp.size())));\n\n";
-
-                if (has_resp){
-                    oss << indent(0, 2)
-                        << "uint32_t _req_timeout = timeout_;\n"
-                        << indent(0, 2)
-                        << "auto _iter = method_timeout_.find(\""
-                        << j.first
-                        << "\");\n"
-                        << indent(0, 2)
-                        << "if (_iter != method_timeout_.end()){\n"
-                        << indent(0, 3)
-                        << "_req_timeout = _iter->second;\n"
-                        << indent(0, 2)
-                        << "}\n"
-                        << indent(0, 2)
-                        << "soce::cortengine::CortEngine::CortId _id = SCortEngine.get_cur_cort_id();\n"
-                        << indent(0, 2)
-                        << "_dthread->add_request(_req_id, _id);\n"
-                        << indent(0, 2)
-                        << "SCortEngine.yield(_req_timeout);\n"
-                        << indent(0, 2)
-                        << "if(SCortEngine.is_timeout()){\n"
-                        << indent(0, 3)
-                        << "_dthread->del_request(_req_id);\n"
-                        << indent(0, 3)
-                        << "return soce::crpc::kCortTimeout;\n"
-                        << indent(0, 2)
-                        << "}\n"
-                        << indent(0, 2)
-                        << "_dthread = soce::crpc::WorkerThread::s_self;\n"
-                        << indent(0, 2)
-                        << "resp_str = _dthread->get_last_resp();\n"
-                        << indent(0, 1)
-                        << "}\n"
-                        << indent(0, 1)
-                        << "if (!resp_str || resp_str->empty()){\n"
-                        << indent(0, 2)
-                        << "return soce::crpc::kServerNotAvailable;\n"
-                        << indent(0, 1)
-                        << "}\n"
-                        << indent(0, 1)
-                        << "if (*resp_str == \"BroadcastOk\"){\n"
-                        << indent(0, 2)
-                        << "return soce::crpc::kOk;\n"
-                        << indent(0, 1)
-                        << "}\n"
-                        << indent(0, 1)
-                        << "if (*resp_str == \"BroadcastError\"){\n"
-                        << indent(0, 2)
-                        << "return soce::crpc::kBroadcastError;\n"
-                        << indent(0, 1)
-                        << "}\n"
-                        << indent(0, 1)
-                        << "_bp.reset();\n"
-                        << indent(0, 1)
-                        << "_bp.init(const_cast<char*>(resp_str->c_str() + 4), resp_str->size() - 4);\n"
-                        << indent(0, 1)
-                        << i.first
-                        << j.first
-                        << "Resp _resp;\n"
-                        << indent(0, 1)
-                        << "if (_resp.deserialize((soce::proto::ProtoIf*)&_bp) == 0){\n"
-                        << indent(0, 2)
-                        << "return soce::crpc::kRespProtoError;\n"
-                        << indent(0, 1)
-                        << "}\n"
-                        << indent(0, 1)
-                        << "SInterceptor.do_after_itcptor(_resp.mutable_header(), \""
+                    oss << indent(0, 1)
+                        << "soce::crpc::RpcStatus status = do_req(\""
                         << i.first
                         << "\", \""
                         << j.first
-                        << "\", true);\n"
+                        << "\", _type, _req_id, _req.mutable_header(), &_req, _resp.mutable_header(), &_resp);\n"
                         << indent(0, 1)
-                        << "if (_resp.get_header().get_status() != soce::crpc::kRpcStatusOK){\n"
+                        << "if (status != soce::crpc::kRpcStatusOK){\n"
                         << indent(0, 2)
-                        << "return _resp.get_header().get_status();\n"
+                        << "return status;\n"
                         << indent(0, 1)
-                        << "}\n";
+                        << "}\n\n";
 
-                    if (has_return){
+
+                    if (has_result){
                         oss << indent(0, 1)
-                            << "_return = _resp.get_result();\n";
+                            << "_result = _resp.get_result();\n";
                     }
 
                     oss << indent(0, 1)
-                        << "return soce::crpc::kOk;\n";
+                        << "return soce::crpc::kRpcStatusOK;\n";
                 }
                 else{
                     oss << indent(0, 1)
-                        << "}\n";
+                        << "do_req(\""
+                        << i.first
+                        << "\", \""
+                        << j.first
+                        << "\", _type, _req_id, _req.mutable_header(), &_req);\n";
                 }
 
                 oss << indent(0, 0)

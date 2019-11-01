@@ -30,6 +30,7 @@
 using std::string;
 using std::vector;
 using soce::transport::EvtfdProcessor;
+using namespace soce::transport;
 
 namespace soce{
 namespace crpc{
@@ -363,7 +364,7 @@ namespace crpc{
         return cond_tree;
     }
 
-    void NameServerIf::set_processor(std::shared_ptr<soce::transport::ProcessorIf> processor)
+    void NameServerIf::set_processor(std::shared_ptr<ProcessorIf> processor)
     {
         processor_ = processor;
         transport_ = processor_->get_transport();
@@ -373,11 +374,14 @@ namespace crpc{
 
     void NameServerIf::watch_service(const std::string& service)
     {
+        if (watched_services_.find(service) != watched_services_.end()) {
+            return;
+        }
+
+        watched_services_.insert(service);
+
         if (transport_){
             do_watch_service(service);
-        }
-        else{
-            watched_services_.insert(service);
         }
     }
 
@@ -391,48 +395,99 @@ namespace crpc{
         return 0;
     }
 
-    void NameServerZk::set_zk_root(const std::string& zk_root)
+    void NameServerZk::set_service_dir(const std::string& service_dir)
     {
-        zk_root_ = zk_root;
+        service_dir_ = service_dir;
+    }
+
+    void NameServerZk::watch_all()
+    {
+        std::vector<std::string> servers;
+        if (soce_zk_.get_children(service_dir_,
+                                  soce::zookeeper::kWatchModeRepeat,
+                                  servers)){
+            return;
+        }
+
+        for (auto& i : servers) {
+            watch_service(i);
+        }
     }
 
     void NameServerZk::on_connected(uint64_t conn_id)
     {
-        auto iter = temp_svr_info_.find(conn_id);
-        if (iter == temp_svr_info_.end()){
-            return;
-        }
+        lock_.write_lock();
+        do {
+            auto iter = connecting_.find(conn_id);
+            if (iter == connecting_.end()) {
+                break;
+            }
 
-        addr2connid_[iter->second.addr] = conn_id;
-        server_repo_.add_server(conn_id, iter->second.attrs);
-        temp_svr_info_.erase(iter);
+            std::string addr = iter->second;
+            connecting_.erase(iter);
+
+            auto it_status = server_status_.find(addr);
+            if (it_status == server_status_.end()) {
+                break;
+            }
+
+            broken_servers_.erase(addr);
+            it_status->second.status = kConnStatusConencted;
+            addr2connid_[addr] = conn_id;
+            server_repo_.add_server(conn_id, it_status->second.attrs);
+        }while(0);
+
+        lock_.write_unlock();
     }
 
     int NameServerZk::add_server(const std::string& service,
                                  const string& value)
     {
-        string full_path = zk_root_ + "/" + service + "/" + server_addr_;
+        string full_path = service_dir_ + "/" + service + "/" + server_addr_;
         return soce_zk_.create(full_path, value, soce::zookeeper::kCrtModeEphemeral);
     }
 
     void NameServerZk::del_server(uint64_t conn_id)
     {
         lock_.write_lock();
-        temp_svr_info_.erase(conn_id);
+        string addr;
 
         auto iter = connid2addr_.find(conn_id);
         if (iter != connid2addr_.end()){
-            addr2connid_.erase(iter->second);
+            addr = iter->second;
+            addr2connid_.erase(addr);
             connid2addr_.erase(iter);
         }
 
+        auto it_conn = connecting_.find(conn_id);
+        if (it_conn != connecting_.end()) {
+            addr = it_conn->second;
+            connecting_.erase(iter);
+        }
+
         server_repo_.del_server(conn_id);
+
+        auto it_status = server_status_.find(addr);
+        if (it_status != server_status_.end()){
+            if (it_status->second.conn_with_ns) {
+                it_status->second.status = kConnStatusBroken;
+                broken_servers_.insert(addr);
+                if (reconn_timer_ == 0) {
+                    reconn_timer_ = transport_->add_timer(reconnect_time_,
+                                                          TransportIf::kTimerModePresist,
+                                                          std::bind(&NameServerZk::reconnect, this));
+                }
+            }else{
+                server_status_.erase(it_status);
+            }
+        }
+
         lock_.write_unlock();
     }
 
     void NameServerZk::do_watch_service(const string& service)
     {
-        string full_path = zk_root_ + "/" + service;
+        string full_path = service_dir_ + "/" + service;
         std::vector<std::pair<std::string, std::string>> servers;
         if (soce_zk_.get_children_content(full_path,
                                           soce::zookeeper::kWatchModeRepeat,
@@ -518,11 +573,16 @@ namespace crpc{
         vector<soce::zookeeper::NotifyInfo> notifies;
         soce_zk_.get_notifies(notifies);
         for (auto& info : notifies){
-            if (info.type != soce::zookeeper::kTypeGetCldCnt){
-                return;
+
+            if (info.type == soce::zookeeper::kTypeGetCld) {
+                for (auto& i : info.cld) {
+                    watch_service(i);
+                }
             }
 
-            resolve_servers(info.cldcnt);
+            else if (info.type == soce::zookeeper::kTypeGetCldCnt){
+                resolve_servers(info.cldcnt);
+            }
         }
     }
 
@@ -530,16 +590,24 @@ namespace crpc{
     {
         lock_.write_lock();
 
+        for (auto& i : server_status_) {
+            i.second.conn_with_ns = false;
+        }
+
         std::unordered_map<std::string, uint64_t> invalid_servers = addr2connid_;
         for (auto& i : servers){
             uint64_t conn_id = 0;
 
-            TempSvrInfo tsi;
+            soce::crpc::attr::ServerAttrs attrs;
             soce::proto::BinaryProto bp;
             bp.init(const_cast<char*>(i.second.c_str()), i.second.size(), false);
-            if (tsi.attrs.deserialize((soce::proto::ProtoIf*)&bp) == 0){
+            if (attrs.deserialize((soce::proto::ProtoIf*)&bp) == 0){
                 continue;
             }
+
+            server_status_[i.first].conn_with_ns = true;
+            server_status_[i.first].status = kConnStatusConencting;
+            server_status_[i.first].attrs = attrs;
 
             auto iter = addr2connid_.find(i.first);
             if (iter == addr2connid_.end()){
@@ -547,25 +615,43 @@ namespace crpc{
                     continue;
                 }
 
-                tsi.addr = i.first;
-                temp_svr_info_[conn_id] = tsi;
+                connecting_[conn_id] = i.first;
             }
             else{
                 conn_id = iter->second;
-                server_repo_.add_server(conn_id, tsi.attrs);
+                server_repo_.add_server(conn_id, attrs);
             }
-
-            invalid_servers.erase(i.first);
         }
 
-        for (auto& i : invalid_servers){
-            auto iter = addr2connid_.find(i.first);
-            if (iter != addr2connid_.end()){
-                uint64_t conn_id = iter->second;
-                connid2addr_.erase(conn_id);
-                server_repo_.del_server(conn_id);
-                addr2connid_.erase(iter);
+        lock_.write_unlock();
+    }
+
+    void NameServerZk::reconnect()
+    {
+        lock_.read_lock();
+        if (broken_servers_.empty()) {
+            lock_.read_unlock();
+            return;
+        }
+        lock_.read_unlock();
+
+        lock_.write_lock();
+        for (auto& i : broken_servers_) {
+            auto iter = server_status_.find(i);
+            if (iter == server_status_.end()){
+                continue;
             }
+
+            if (iter->second.status == kConnStatusConencting) {
+                continue;
+            }
+
+            uint64_t conn_id = 0;
+            if (transport_->connect(i, processor_, conn_id)){
+                continue;
+            }
+
+            connecting_[conn_id] = i;
         }
         lock_.write_unlock();
     }

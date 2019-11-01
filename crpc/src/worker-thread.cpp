@@ -60,9 +60,6 @@ namespace crpc{
         transport_->add_timer(check_cort_gap_,
                               soce::transport::TransportIf::kTimerModePresist,
                               std::bind(&WorkerThread::check_cort_timeout, this));
-        steal_tmid = transport_->add_timer(steal_gap_,
-                                           soce::transport::TransportIf::kTimerModeOnceAndRetain,
-                                           std::bind(&WorkerThread::steal_jobs, this));
     }
 
     WorkerThread::~WorkerThread()
@@ -74,7 +71,7 @@ namespace crpc{
     {
         (void) fd;
 
-        soce::utils::DQVector<RequestIn::QueueData> reqs;
+        soce::utils::FQVector<RequestIn::QueueData> reqs;
         if (req_in_->try_consume(consumer_id_, reqs)){
             return;
         }
@@ -82,8 +79,6 @@ namespace crpc{
         for (auto& i : reqs){
             handle_req(i.service_, i.data_, i.conn_id_);
         }
-
-        steal_jobs();
     }
 
     void WorkerThread::append_req(const CrpcReqHeader& header, std::string&& request)
@@ -91,7 +86,7 @@ namespace crpc{
         RpcType rpc_type = header.get_type();
         const string& service = header.get_service();
         const string& method = header.get_method();
-        int64_t req_id = header.get_req_id();
+        int64_t req_id = *(int64_t*)const_cast<char*>(header.get_req_id());
         std::set<uint64_t> conn_ids;
 
         if (rpc_type == kRpcTypeReq){
@@ -124,7 +119,7 @@ namespace crpc{
         }
 
         request_stubs_[req_id].conn_ids = conn_ids;
-        req_out_->produce(tid_, conn_ids, tid_, req_id, std::move(request));
+        req_out_->produce(conn_ids, tid_, req_id, std::move(request));
     }
 
     void WorkerThread::append_resp(uint64_t conn_id, int64_t req_id, std::string&& resp)
@@ -146,22 +141,8 @@ namespace crpc{
         SCortEngine.check_timeout();
     }
 
-    void WorkerThread::steal_jobs()
-    {
-        if (!req_in_->empty(consumer_id_)){
-            return;
-        }
-
-        req_in_->rebalance(consumer_id_);
-
-        if (req_in_->empty(consumer_id_)){
-            transport_->restart_timer(steal_tmid, steal_gap_);
-        }
-    }
-
     void WorkerThread::thread_entry()
     {
-        SAsyncLogger.init_thread_logger();
         WorkerThread::s_self = this;
 
         transport_->watch(req_in_->get_consumer_fd(consumer_id_),
@@ -196,13 +177,13 @@ namespace crpc{
         if (svr->get_svr_proc_type() == ServiceIf::kSvrProcTypeSync){
             string resp = services_[service]->process(data);
             if (!resp.empty()){
-                resp_out_->produce(tid_, conn_id, std::move(resp));
+                resp_out_->produce(conn_id, std::move(resp));
             }
         }else if (svr->get_svr_proc_type() == ServiceIf::kSvrProcTypeCort){
             auto id = SCortEngine.create([&]{
                     string resp = services_[service]->process(data);
                     if (!resp.empty()){
-                        resp_out_->produce(tid_, conn_id, std::move(resp));
+                        resp_out_->produce(conn_id, std::move(resp));
                     }
                 });
             SCortEngine.resume(id);
@@ -215,14 +196,12 @@ namespace crpc{
     {
         (void) fd;
 
-        soce::utils::DQVector<ResponseIn::QueueData> resps;
+        soce::utils::FQVector<ResponseIn::QueueData> resps;
         if (resp_in_->try_consume(consumer_id_, resps)){
             return;
         }
 
         for (auto& i : resps){
-            CRPC_DEBUG << _S("ConsumerId", consumer_id_) << _S("reqid", i.reqid_);
-
             auto iter = request_stubs_.find(i.reqid_);
             if (iter == request_stubs_.end()){
                 continue;

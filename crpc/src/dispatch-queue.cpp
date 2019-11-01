@@ -28,7 +28,7 @@ namespace crpc{
 
     RequestIn::RequestIn(size_t consumers)
     {
-        queue_.reset(new soce::utils::DispatchQueue_1n<QueueData>(consumers));
+        queue_.reset(new soce::utils::DispatchQueue<QueueData>(consumers));
     }
 
     void RequestIn::produce(uint64_t conn_id, std::string&& service, std::string&& data)
@@ -37,19 +37,19 @@ namespace crpc{
         queue_->produce(conn_id, std::move(service), std::move(data));
     }
 
-    RequestOut::RequestOut(size_t producers)
+    RequestOut::RequestOut()
     {
-        queue_.reset(new soce::utils::DispatchQueue_n1<QueueData>(producers));
+        queue_.reset(new soce::utils::DispatchQueue<QueueData>());
     }
 
-    void RequestOut::produce(size_t pid, const std::set<uint64_t>& conn_ids, int32_t tid, int64_t req_id, std::string&& data)
+    void RequestOut::produce(const std::set<uint64_t>& conn_ids, int32_t tid, int64_t req_id, std::string&& data)
     {
-        queue_->produce(pid, conn_ids, tid, req_id, std::move(data));
+        queue_->produce(conn_ids, tid, req_id, std::move(data));
     }
 
     ResponseIn::ResponseIn(size_t consumers)
     {
-        queue_.reset(new soce::utils::DispatchQueue_1n<QueueData>(consumers, [](const QueueData& data, size_t){
+        queue_.reset(new soce::utils::DispatchQueue<QueueData>(consumers, [](const QueueData& data, size_t){
                     return data.consumer_id_;
                 }));
     }
@@ -59,14 +59,14 @@ namespace crpc{
         queue_->produce(consumer_id, conn_id, reqid, std::move(data));
     }
 
-    ResponseOut::ResponseOut(size_t producers)
+    ResponseOut::ResponseOut()
     {
-        queue_.reset(new soce::utils::DispatchQueue_n1<QueueData>(producers));
+        queue_.reset(new soce::utils::DispatchQueue<QueueData>());
     }
 
-    void ResponseOut::produce(size_t pid, uint64_t conn_id, std::string&& data)
+    void ResponseOut::produce(uint64_t conn_id, std::string&& data)
     {
-        queue_->produce(pid, conn_id, std::move(data));
+        queue_->produce(conn_id, std::move(data));
     }
 
 } // namespace crpc

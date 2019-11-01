@@ -1,11 +1,13 @@
-#ifndef _server_attr_2097225531_H_
-#define _server_attr_2097225531_H_
+#ifndef _server_attr_62132910_H_
+#define _server_attr_62132910_H_
 
 #include <string>
 #include <bitset>
 #include <stdint.h>
 #include <unordered_map>
 #include <vector>
+#include "proto/fads-message.h"
+#include "proto/fads-message.h"
 #include "proto/soce-proto.h"
 #include "proto/type-tree.h"
 
@@ -21,7 +23,7 @@ public:
     MethodFiltersTypeTree(soce::proto::TypeTree& type_tree);
 };
 
-class MethodFilters{
+class MethodFilters : public soce::fads::FadsMessage{
 public:
     void set_filter(const string& _filter){
         filter = _filter;
@@ -94,8 +96,8 @@ public:
 
     size_t read(soce::proto::ProtoIf* proto, bool required, bool with_type);
     size_t write(soce::proto::ProtoIf* proto, bool required, bool has_set, bool with_type = true) const;
-    size_t deserialize(soce::proto::ProtoIf* proto);
-    size_t serialize(soce::proto::ProtoIf* proto) const;
+    virtual size_t deserialize(soce::proto::ProtoIf* proto);
+    virtual size_t serialize(soce::proto::ProtoIf* proto) const;
     static soce::proto::TypeTree* get_type_tree();
 
 private:
@@ -107,7 +109,7 @@ private:
     bitset<2> attrs_ = 0;
     bitset<2> status_;
 
-    public:
+public:
     static MethodFiltersTypeTree s_type_tree;
 };
 
@@ -123,7 +125,7 @@ public:
     ServerAttrsTypeTree(soce::proto::TypeTree& type_tree);
 };
 
-class ServerAttrs{
+class ServerAttrs : public soce::fads::FadsMessage{
 public:
     void set_name(const string& _name){
         name = _name;
@@ -196,8 +198,8 @@ public:
 
     size_t read(soce::proto::ProtoIf* proto, bool required, bool with_type);
     size_t write(soce::proto::ProtoIf* proto, bool required, bool has_set, bool with_type = true) const;
-    size_t deserialize(soce::proto::ProtoIf* proto);
-    size_t serialize(soce::proto::ProtoIf* proto) const;
+    virtual size_t deserialize(soce::proto::ProtoIf* proto);
+    virtual size_t serialize(soce::proto::ProtoIf* proto) const;
     static soce::proto::TypeTree* get_type_tree();
 
 private:
@@ -209,7 +211,7 @@ private:
     bitset<2> attrs_ = 3;
     bitset<2> status_;
 
-    public:
+public:
     static ServerAttrsTypeTree s_type_tree;
 };
 
@@ -225,7 +227,7 @@ public:
     ProcessorAttrsTypeTree(soce::proto::TypeTree& type_tree);
 };
 
-class ProcessorAttrs{
+class ProcessorAttrs : public soce::fads::FadsMessage{
 public:
     void set_server_attrs(const vector<string>& _server_attrs){
         server_attrs = _server_attrs;
@@ -276,8 +278,8 @@ public:
 
     size_t read(soce::proto::ProtoIf* proto, bool required, bool with_type);
     size_t write(soce::proto::ProtoIf* proto, bool required, bool has_set, bool with_type = true) const;
-    size_t deserialize(soce::proto::ProtoIf* proto);
-    size_t serialize(soce::proto::ProtoIf* proto) const;
+    virtual size_t deserialize(soce::proto::ProtoIf* proto);
+    virtual size_t serialize(soce::proto::ProtoIf* proto) const;
     static soce::proto::TypeTree* get_type_tree();
 
 private:
@@ -288,7 +290,7 @@ private:
     bitset<1> attrs_ = 1;
     bitset<1> status_;
 
-    public:
+public:
     static ProcessorAttrsTypeTree s_type_tree;
 };
 

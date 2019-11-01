@@ -20,31 +20,28 @@
 #include <iostream>
 #include <cassert>
 #include "log4rel/logger.h"
-#include "log4rel/async-logger.h"
 #include "log4rel/plain-sink.h"
-#include "log4rel/thread-sink.h"
+#include "log4rel/async-sink.h"
 #include "log4rel/console-sink.hpp"
 #include "unistd.h"
 
-#include <sys/time.h>
-using namespace std;
+using std::string;
 using namespace soce::log4rel;
 
 void sample()
 {
     // std::shared_ptr<Logger> logger;
     // logger.reset(new Logger);
-    // logger->add_sink(shared_ptr<ISink>(new ConsoleSink));
-    // logger->add_sink(shared_ptr<ISink>(new PlainSink));
-    // SOCE_LOGGER_MGR.add_logger("test", logger);
-    // SOCE_LOGGER_MGR.switch_logger("test");
+    // logger->add_sink(std::shared_ptr<ISink>(new ConsoleSink));
+    // logger->add_sink(std::shared_ptr<ISink>(new PlainSink));
+    // SOCE_GLOBAL_LOGGER_MGR.add_logger("test", logger);
+    // SOCE_GLOBAL_LOGGER_MGR.switch_logger("test");
 
     // SOCE_CUR_LOGGER->set_fmt(soce::log4rel::kLogFmtJson);
-    SOCE_CUR_LOGGER->reserve_field(kLogFieldLevel, true);
+    // SOCE_CUR_LOGGER->reserve_field(kLogFieldLevel, true);
     // SOCE_CUR_LOGGER->reserve_field(kLogFieldPos, true);
     // SOCE_CUR_LOGGER->reserve_field(kLogFieldPid, true);
     // SOCE_CUR_LOGGER->reserve_field(kLogFieldTid, true);
-    // SOCE_CUR_LOGGER->reserve_field(kLogFieldKey, true);
     // SOCE_CUR_LOGGER->set_log_level(kLogLevelInfo);
     // SOCE_CUR_LOGGER->add_key_filter(kLogFilterAllow, "your.*");
     // SOCE_CUR_LOGGER->add_key_filter(kLogFilterDeny, "your.key2");
@@ -68,19 +65,16 @@ std::shared_ptr<Logger> global_logger;
 
 void thread_entry()
 {
-    SOCE_LOGGER_MGR.add_logger("test", global_logger);
-    SOCE_LOGGER_MGR.switch_logger("test");
-
     std::thread::id tid = std::this_thread::get_id();
     for (size_t i=0; i<NRECORD; ++i){
         SOCE_INFO << _S("tid", tid) << _N("i", i);
     }
 }
 
-void sample_multi_thread_thread_safe_logger()
+void sample_multi_thread()
 {
-    SOCE_CUR_LOGGER->add_sink(std::shared_ptr<PlainSink>(new PlainSink));
-    global_logger = SOCE_LOGGER_MGR.get_cur_logger();
+    auto logger = SOCE_GLOBAL_LOGGER_MGR.get_cur_logger();
+    logger->add_sink(std::shared_ptr<PlainSink>(new PlainSink));
 
     std::thread t[NTHREAD];
     for (size_t i = 0; i<NTHREAD; ++i) {
@@ -92,32 +86,16 @@ void sample_multi_thread_thread_safe_logger()
     }
 }
 
-void thread_sink_entry(int tid)
+void sample_async()
 {
-    SAsyncLogger.init_thread_logger();
-
-    for (size_t i=0; i<NRECORD; ++i){
-        SOCE_INFO << _S("tid", tid) << _N("i", i);
-    }
-}
-
-void sample_multi_thread_thread_sink()
-{
-    SAsyncLogger.set_sink(std::shared_ptr<PlainSink>(new PlainSink));
-    SAsyncLogger.set_logger_creator([](){
-            std::shared_ptr<soce::log4rel::Logger> logger(new soce::log4rel::Logger);
-            //logger->reserve_field(soce::log4rel::kLogFieldLevel, true);
-            logger->reserve_field(soce::log4rel::kLogFieldPos, true);
-            logger->reserve_field(soce::log4rel::kLogFieldTid, true);
-            //logger->set_log_level(soce::log4rel::kLogLevelInfo);
-            return logger;
-        });
-
-    SAsyncLogger.start();
+    auto sink = std::make_shared<AsyncSink>();
+    sink->add_sink(std::shared_ptr<PlainSink>(new PlainSink));
+    auto logger = SOCE_GLOBAL_LOGGER_MGR.get_cur_logger();
+    logger->add_sink(sink);
 
     std::thread t[NTHREAD];
     for (size_t i = 0; i<NTHREAD; ++i) {
-        t[i] = std::thread(thread_sink_entry, i);
+        t[i] = std::thread(thread_entry);
     }
 
     for (size_t i = 0; i<NTHREAD; ++i) {
@@ -128,8 +106,8 @@ void sample_multi_thread_thread_sink()
 int main()
 {
     sample();
-    // sample_multi_thread_thread_safe_logger();
-    // sample_multi_thread_thread_sink();
+    // sample_multi_thread();
+    // sample_async();
 
     return 0;
 }

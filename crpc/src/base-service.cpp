@@ -50,8 +50,8 @@ namespace crpc{
 
         auto iter = handlers_.find(method);
         if (iter == handlers_.end()){
-            int64_t req_id = 0;
-            if (dg.get_int64(reqid_index_, req_id)){
+            char req_id[8];
+            if (dg.get_bytes(reqid_index_, req_id, 8)){
                 CrpcErrorResp resp;
                 resp.mutable_header().set_req_id(req_id);
                 resp.mutable_header().set_status(kRpcStatusProtoError);
@@ -142,7 +142,7 @@ namespace crpc{
                 status = 2;
             }
 
-            ostringstream oss;
+            std::ostringstream oss;
             for (auto& i : expr){
                 oss << i << " ";
             }
@@ -167,6 +167,56 @@ namespace crpc{
         CRPC_DEBUG << _S("ServiceInfo", rc);
 
         return std::move(rc);
+    }
+
+    std::string BaseService::handle_request(const std::string& data,
+                                            const std::string& service,
+                                            const std::string& method,
+                                            soce::fads::FadsMessage* req_msg,
+                                            soce::crpc::CrpcReqHeader& req_header,
+                                            soce::fads::FadsMessage* resp_msg,
+                                            soce::crpc::CrpcRespHeader& resp_header,
+                                            std::function<void()> handler)
+    {
+        std::string resp;
+        soce::proto::BinaryProto bp;
+        bp.init(const_cast<char*>(data.c_str() + 4), data.size() - 4);
+        if (req_msg->deserialize((soce::proto::ProtoIf*)&bp) == 0){
+            return resp;
+        }
+
+        resp_header.set_type(soce::crpc::kRpcTypeResp);
+        resp_header.set_req_id(req_header.get_req_id());
+        resp_header.set_status(soce::crpc::kRpcStatusOK);
+        resp = SInterceptor.do_before_itcptor(req_header, service, method, false);
+        if (resp.empty()){
+            raw_req_ = req_msg;
+            handler();
+            raw_req_ = NULL;
+            resp = SInterceptor.do_after_itcptor(resp_header, service, method, false);
+            if (resp.empty()){
+                soce::proto::BinaryProto out;
+                if (resp_msg->serialize((soce::proto::ProtoIf*)&out)){
+                    resp.assign(out.data(), out.size());
+                }
+            }
+        }
+        return std::move(resp);
+    }
+
+    std::string BaseService::handle_request(const std::string& data,
+                                     soce::fads::FadsMessage* req_msg,
+                                     soce::crpc::CrpcReqHeader& req_header,
+                                     std::function<void()> handler)
+    {
+        soce::proto::BinaryProto bp;
+        bp.init(const_cast<char*>(data.c_str() + 4), data.size() - 4);
+        if (req_msg->deserialize((soce::proto::ProtoIf*)&bp) == 0){
+            return std::string();
+        }
+
+        handler();
+        return std::string();
     }
 
 } // namespace crpc

@@ -40,6 +40,7 @@ class SoceRedisAsync
 public:
     using Callback = std::function<void(std::shared_ptr<SoceRedis>)>;
     using AsyncRequest = struct AsyncRequest{
+        AsyncRequest(){}
         AsyncRequest(SoceRedis::Fmt fmt, Callback callback){
             this->fmt = fmt;
             this->callback = callback;
@@ -61,7 +62,7 @@ private:
 
 private:
     std::thread thread_;
-    soce::utils::DispatchQueue_11<AsyncRequest> queue_;
+    soce::utils::DispatchQueue<AsyncRequest> queue_;
     std::shared_ptr<CortConnPool<std::shared_ptr<SoceRedis>>> pool_;
 };
 

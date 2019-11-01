@@ -29,7 +29,6 @@
 #include "status.h"
 #include "utils/dispatch-queue.hpp"
 #include "log4rel/logger.h"
-#include "log4rel/thread-sink.h"
 
 namespace soce{
 namespace fadsdb{
@@ -38,6 +37,8 @@ namespace fadsdb{
     {
     public:
         using SqlData = struct SqlData{
+            SqlData(){}
+
         SqlData(int64_t req_id, int32_t cmd_type, const std::string& key, std::string&& data)
         : req_id_(req_id),
                 cmd_type_(cmd_type),
@@ -61,6 +62,7 @@ namespace fadsdb{
         };
 
         using RespData = struct RespData{
+            RespData(){}
         RespData(int64_t req_id, Status result, std::string&& data)
         : req_id_(req_id),
                 result_(result),
@@ -128,13 +130,12 @@ namespace fadsdb{
     private:
         TableCreater table_creater_;
         std::vector<std::shared_ptr<DbWorker>> workers_;
-        std::shared_ptr<soce::utils::DispatchQueue_1n<SqlData>> req_queue_;
-        std::shared_ptr<soce::utils::DispatchQueue_n1<RespData>> resp_queue_;
+        std::shared_ptr<soce::utils::DispatchQueue<SqlData>> req_queue_;
+        std::shared_ptr<soce::utils::DispatchQueue<RespData>> resp_queue_;
         RespHandler resp_handler_;
         std::thread thread_;
         std::atomic<bool> run_{true};
         uint32_t timeout_ = 1000;
-        soce::log4rel::MultiThreadSink sink_;
         std::vector<uint32_t> cmd_type_index_{0, 0};
         std::vector<uint32_t> key_index_{1};
     };
@@ -142,8 +143,8 @@ namespace fadsdb{
     class DbCore::DbWorker
     {
     public:
-        DbWorker(std::shared_ptr<soce::utils::DispatchQueue_1n<SqlData>> req_queue,
-                 std::shared_ptr<soce::utils::DispatchQueue_n1<RespData>> resp_queue,
+        DbWorker(std::shared_ptr<soce::utils::DispatchQueue<SqlData>> req_queue,
+                 std::shared_ptr<soce::utils::DispatchQueue<RespData>> resp_queue,
                  size_t index);
         int start();
         void stop();
@@ -151,7 +152,7 @@ namespace fadsdb{
         void add_tables(std::vector<std::shared_ptr<FadsTable>> tables);
 
     private:
-        void do_sql(soce::utils::DQVector<SqlData>& reqs);
+        void do_sql(soce::utils::FQVector<SqlData>& reqs);
         Status do_insert(const SqlData& req);
         Status do_remove(const SqlData& req);
         Status do_update(const SqlData& req);
@@ -164,8 +165,8 @@ namespace fadsdb{
         FadsDb db_;
         size_t timeout_ = 1000;
         bool run_ = false;
-        std::shared_ptr<soce::utils::DispatchQueue_1n<SqlData>> req_queue_;
-        std::shared_ptr<soce::utils::DispatchQueue_n1<RespData>> resp_queue_;
+        std::shared_ptr<soce::utils::DispatchQueue<SqlData>> req_queue_;
+        std::shared_ptr<soce::utils::DispatchQueue<RespData>> resp_queue_;
         size_t index_ = 0;
     };
 

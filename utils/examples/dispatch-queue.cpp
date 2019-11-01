@@ -20,44 +20,39 @@
 #include <thread>
 #include <functional>
 #include <atomic>
+#include <unistd.h>
 #include "log4rel/logger.h"
 #include "utils/dispatch-queue.hpp"
 
 using namespace soce::utils;
 
+#define N 2
 class ExampleDispatchQueue
 {
 public:
     ExampleDispatchQueue()
         {
-            // 2 producers and 2 consumers
-            dq_.reset(new DispatchQueue<int>(2, 2, std::bind(&ExampleDispatchQueue::consumer_selector,
+            dq_.reset(new DispatchQueue<int>(N, std::bind(&ExampleDispatchQueue::consumer_selector,
                                                              this,
                                                              std::placeholders::_1,
                                                              std::placeholders::_2)));
+
+            dq_.reset(new DispatchQueue<int>(N));
         }
 
     void start()
         {
             SOCE_DEBUG << _D("--------------- sample_dispatch_queue ---------------");
 
-            // try_consume_for
-            SOCE_DEBUG << _D("before try_consumer_for, wait for at most 1sec");
-            DQVector<int> data;
-            dq_->try_consume_for(0, data, 1000);
-            SOCE_DEBUG << _D("after try_consumer_for");
-
-            // try_consume
-            t1_ = std::thread(&ExampleDispatchQueue::consumer_thread, this, 0);
-            t2_ = std::thread(&ExampleDispatchQueue::consumer_thread, this, 1);
-
-            for (size_t i=0; i<data_size_; ++i){
-                dq_->produce(0, i);
-                dq_->produce(1, i + 10);
+            for (int i=0; i<N; ++i){
+                producers_[i] = std::thread(&ExampleDispatchQueue::producer_thread, this, i);
+                consumers_[i] = std::thread(&ExampleDispatchQueue::consumer_thread, this, i);
             }
 
-            t1_.join();
-            t2_.join();
+            for (int i=0; i<N; ++i){
+                producers_[i].join();
+                consumers_[i].join();
+            }
         }
 
 private:
@@ -72,17 +67,34 @@ private:
             return (val % 2) ? 0 : 1;
         }
 
+    void producer_thread(int consumer_id)
+        {
+            for (size_t i=0; i<data_size_; ++i){
+                dq_->produce(2 * i + consumer_id);
+            }
+        }
+
     void consumer_thread(int consumer_id)
         {
             size_t total = 0;
+            int fd = dq_->get_consumer_fd(consumer_id);
+            struct timeval tv;
+            tv.tv_sec = 0;
+            tv.tv_usec = 10000;
+
             while (1){
-                DQVector<int> data;
+                fd_set readfds;
+                FD_ZERO(&readfds);
+                FD_SET(fd, &readfds);
+                select(fd + 1, &readfds, NULL, NULL, &tv);
+
+                FQVector<int> data;
                 if (!dq_->try_consume(consumer_id, data)){
                     total += data.size();
                     count_ += data.size();
                 }
-
-                if (count_ >= data_size_ * 2){
+                usleep(10000);
+                if (count_ >= data_size_ * N){
                     break;
                 }
             }
@@ -92,14 +104,14 @@ private:
 
 private:
     std::shared_ptr<DispatchQueue<int>> dq_;
-    std::thread t1_;
-    std::thread t2_;
-    const size_t data_size_ = 5;
+    std::thread producers_[N];
+    std::thread consumers_[N];
+    const size_t data_size_ = 1000;
     std::atomic<size_t> count_{0};
 };
 
 void dispatch_queue()
 {
-    ExampleDispatchQueue sdq;
-    sdq.start();
+    ExampleDispatchQueue edq;
+    edq.start();
 }

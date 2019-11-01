@@ -25,9 +25,6 @@
 #include <thread>
 #include <chrono>
 
-#include <iostream>
-using namespace std;
-
 namespace soce{
 namespace utils{
 
@@ -115,6 +112,7 @@ namespace utils{
                 while (1){
                     int readers = 0;
                     if (readers_.compare_exchange_weak(readers, 0)){
+                        std::this_thread::yield();
                         break;
                     }
 
@@ -137,6 +135,36 @@ namespace utils{
         std::atomic<int> readers_{0};
         std::atomic<int> writing_{0};
         std::timed_mutex mtx_;
+    };
+
+    class ReadLockGuard
+    {
+    public:
+        ReadLockGuard(RWLock& lock)
+            : lock_(lock){
+            lock_.read_lock();
+        }
+        ~ReadLockGuard() {
+            lock_.read_unlock();
+        }
+
+    private:
+        RWLock& lock_;
+    };
+
+    class WriteLockGuard
+    {
+    public:
+        WriteLockGuard(RWLock& lock)
+            : lock_(lock){
+            lock_.write_lock();
+        }
+        ~WriteLockGuard() {
+            lock_.write_unlock();
+        }
+
+    private:
+        RWLock& lock_;
     };
 
 } // namespace utils

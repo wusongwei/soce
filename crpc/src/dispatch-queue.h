@@ -37,6 +37,7 @@ namespace crpc{
     {
     public:
         using QueueData = struct QueueData{
+            QueueData(){}
         QueueData(uint64_t conn_id, std::string&& service, std::string&& data)
         : conn_id_(conn_id), service_(std::move(service)), data_(std::move(data))
                 {
@@ -52,21 +53,20 @@ namespace crpc{
         void produce(uint64_t conn_id, std::string&& service, std::string&& data);
         inline bool good() {return queue_->good();}
         inline int get_consumer_fd(size_t cid) {return queue_->get_consumer_fd(cid);}
-        inline int try_consume(size_t cid, soce::utils::DQVector<QueueData>& out)
+        inline int try_consume(size_t cid, soce::utils::FQVector<QueueData>& out)
         {
             return queue_->try_consume(cid, out);
         }
-        inline bool empty(size_t cid){return queue_->empty(cid);}
-        inline void rebalance(size_t cid){queue_->rebalance(cid);}
 
     private:
-        std::shared_ptr<soce::utils::DispatchQueue_1n<QueueData>> queue_;
+        std::shared_ptr<soce::utils::DispatchQueue<QueueData>> queue_;
     };
 
     class RequestOut
     {
     public:
         using QueueData = struct QueueData{
+            QueueData(){}
         QueueData(const std::set<uint64_t> conn_ids, int32_t tid, int64_t req_id, std::string&& data)
         : conn_ids_(conn_ids), tid_(tid), req_id_(req_id), data_(std::move(data))
                 {
@@ -79,23 +79,24 @@ namespace crpc{
         };
 
     public:
-        explicit RequestOut(size_t producers);
-        void produce(size_t pid, const std::set<uint64_t>& conn_ids, int32_t tid, int64_t req_id, std::string&& data);
+        RequestOut();
+        void produce(const std::set<uint64_t>& conn_ids, int32_t tid, int64_t req_id, std::string&& data);
         inline bool good() {return queue_->good();}
-        inline int get_consumer_fd() {return queue_->get_consumer_fd();}
-        inline int try_consume(soce::utils::DQVector<QueueData>& out)
+        inline int get_consumer_fd() {return queue_->get_consumer_fd(0);}
+        inline int try_consume(soce::utils::FQVector<QueueData>& out)
         {
-            return queue_->try_consume(out);
+            return queue_->try_consume(0, out);
         }
 
     private:
-        std::shared_ptr<soce::utils::DispatchQueue_n1<QueueData>> queue_;
+        std::shared_ptr<soce::utils::DispatchQueue<QueueData>> queue_;
     };
 
     class ResponseIn
     {
     public:
         using QueueData = struct QueueData{
+            QueueData(){}
         QueueData(size_t consumer_id, uint64_t conn_id, int64_t reqid, std::string&& data)
         :consumer_id_(consumer_id), conn_id_(conn_id), reqid_(reqid), data_(std::move(data))
                 {
@@ -112,19 +113,20 @@ namespace crpc{
         void produce(size_t consumer_id, uint64_t conn_id, int64_t reqid, std::string&& data);
         inline bool good() {return queue_->good();}
         inline int get_consumer_fd(size_t cid) {return queue_->get_consumer_fd(cid);}
-        inline int try_consume(size_t cid, soce::utils::DQVector<QueueData>& out)
+        inline int try_consume(size_t cid, soce::utils::FQVector<QueueData>& out)
         {
             return queue_->try_consume(cid, out);
         }
 
     private:
-        std::shared_ptr<soce::utils::DispatchQueue_1n<QueueData>> queue_;
+        std::shared_ptr<soce::utils::DispatchQueue<QueueData>> queue_;
     };
 
     class ResponseOut
     {
     public:
         using QueueData = struct QueueData{
+            QueueData() {}
         QueueData(uint64_t conn_id, std::string&& data)
         : conn_id_(conn_id), data_(std::move(data))
                 {
@@ -135,17 +137,17 @@ namespace crpc{
         };
 
     public:
-        explicit ResponseOut(size_t producers);
-        void produce(size_t pid, uint64_t conn_id, std::string&& data);
+        ResponseOut();
+        void produce(uint64_t conn_id, std::string&& data);
         inline bool good() {return queue_->good();}
-        inline int get_consumer_fd() {return queue_->get_consumer_fd();}
-        inline int try_consume(soce::utils::DQVector<QueueData>& out)
+        inline int get_consumer_fd() {return queue_->get_consumer_fd(0);}
+        inline int try_consume(soce::utils::FQVector<QueueData>& out)
         {
-            return queue_->try_consume(out);
+            return queue_->try_consume(0, out);
         }
 
     private:
-        std::shared_ptr<soce::utils::DispatchQueue_n1<QueueData>> queue_;
+        std::shared_ptr<soce::utils::DispatchQueue<QueueData>> queue_;
     };
 
 } // namespace crpc

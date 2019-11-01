@@ -113,7 +113,7 @@ namespace log4rel{
          * Set/Get the default for macros _D
          */
         void set_default_key(const std::string& dkey);
-        const std::string& get_default_key() const;
+        std::string get_default_key() const;
 
         /*
          * Add filter for debug level. see README
@@ -142,18 +142,30 @@ namespace log4rel{
     {
     public:
         LoggerMgr();
-        ~LoggerMgr() = default;
 
         int32_t add_logger(const std::string& name, std::shared_ptr<Logger> logger);
         int32_t switch_logger(const std::string& name);
         std::vector<std::shared_ptr<Logger>> get_loggers();
-        std::shared_ptr<Logger> get_cur_logger();
+        virtual std::shared_ptr<Logger> get_cur_logger() = 0;
 
-    private:
+    protected:
         std::unordered_map<std::string, std::shared_ptr<Logger>> loggers_;
         std::shared_ptr<Logger> cur_logger_;
         bool enable_ = true;
         std::mutex mtx_;
+    };
+
+    class GlobalLoggerMgr : public LoggerMgr
+    {
+    public:
+        GlobalLoggerMgr();
+        virtual std::shared_ptr<Logger> get_cur_logger();
+    };
+
+    class LocalLoggerMgr : public LoggerMgr
+    {
+    public:
+        virtual std::shared_ptr<Logger> get_cur_logger();
     };
 
     class LoggerRecorder
@@ -174,8 +186,9 @@ namespace log4rel{
         std::ostringstream oss_;
     };
 
-#define SOCE_LOGGER_MGR soce::utils::SoceSingletonThreadLocal<soce::log4rel::LoggerMgr>::get_instance()
-#define SOCE_CUR_LOGGER soce::utils::SoceSingletonThreadLocal<soce::log4rel::LoggerMgr>::get_instance().get_cur_logger()
+#define SOCE_GLOBAL_LOGGER_MGR soce::utils::SoceSingleton<soce::log4rel::GlobalLoggerMgr>::get_instance()
+#define SOCE_LOGGER_MGR soce::utils::SoceSingletonThreadLocal<soce::log4rel::LocalLoggerMgr>::get_instance()
+#define SOCE_CUR_LOGGER soce::utils::SoceSingletonThreadLocal<soce::log4rel::LocalLoggerMgr>::get_instance().get_cur_logger()
 
 /*
  * as string

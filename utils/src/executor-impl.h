@@ -49,6 +49,7 @@ namespace utils {
         };
 
         using ExecutorResponse = struct ExecutorResponse{
+            ExecutorResponse(){}
         ExecutorResponse(CortEngine::CortId id)
         :cort_id(id){}
             CortEngine::CortId cort_id;
@@ -68,7 +69,7 @@ namespace utils {
         size_t max_queue_size_ = -1;
         soce::transport::TransportIf* transport_;
         std::shared_ptr<BlockingQueue<ExecutorRequest>> req_queue_;
-        DispatchQueue_11<ExecutorResponse> resp_queue_;
+        DispatchQueue<ExecutorResponse> resp_queue_;
         std::mutex mtx_;
         std::unordered_map<size_t, std::thread> workers_;
         std::vector<std::thread> w_;

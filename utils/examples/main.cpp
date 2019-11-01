@@ -19,19 +19,23 @@
 
 
 extern void cond_expr();
-extern void dispatch_queue();
 extern void snowflake();
 extern void index_list();
 extern void group_list();
+extern void funnel_buffer();
+extern void funnel_queue();
+extern void dispatch_queue();
 extern void executor();
 
 int main()
 {
     cond_expr();
-    dispatch_queue();
     snowflake();
     index_list();
     group_list();
+    funnel_buffer();
+    funnel_queue();
+    dispatch_queue();
     executor();
 
     return 0;

@@ -34,7 +34,6 @@
 #include "dbcmd.h"
 #include "dbcore.h"
 #include "proto/dynamic-getter.h"
-#include "log4rel/async-logger.h"
 #include "log4rel/console-sink.hpp"
 
 using namespace std;
@@ -106,23 +105,10 @@ void RespHandler(const soce::fadsdb::DbCore::RespData& resp)
         break;
     }
 }
-void init_logger()
-{
-    SAsyncLogger.set_sink(std::shared_ptr<soce::log4rel::ConsoleSink>(new soce::log4rel::ConsoleSink));
-    SAsyncLogger.set_logger_creator([](){
-            std::shared_ptr<soce::log4rel::Logger> logger(new soce::log4rel::Logger);
-            logger->reserve_field(soce::log4rel::kLogFieldLevel, true);
-            logger->reserve_field(soce::log4rel::kLogFieldPos, true);
-            logger->reserve_field(soce::log4rel::kLogFieldTid, true);
-            logger->set_log_level(soce::log4rel::kLogLevelInfo);
-            return logger;
-        });
-    SAsyncLogger.start();
-}
 
 int main()
 {
-    init_logger();
+    SOCE_CUR_LOGGER->set_log_level(soce::log4rel::kLogLevelInfo);
 
     int64_t req_id = 0;
     // 为kTypeInt32类型添加mod命令。

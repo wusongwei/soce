@@ -30,7 +30,7 @@ namespace log4rel{
     class ISink
     {
     public:
-        virtual void log(const struct timeval& time, LogLevel level, const std::string& msg) = 0;
+        virtual void log(const char* data, size_t len) = 0;
     };
 
 } // namespace log4rel

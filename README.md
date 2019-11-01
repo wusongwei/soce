@@ -38,9 +38,9 @@ SOCE是Service Oriented Communication Framework的简称，提供基于
    可以为方法指定条件，比如设置只接收参数p的值大于10的请求。还可设置流量，
    比如只导入5%的流量。crpc还支持添加全局、服务级别以及方法级别的拦截函数，
    以实现诸如链路监控等扩展特性。   
-   与Grpc和Thrift类似，crpc在使用时也需要先编写IDL文件。目前crpc只支持协程客户端，
-   后续可能会支持同步和异步接口。crpc除了支持普通的调用方式外，还支持无条件广播和
-   条件广播，允许同时将消息发送给多个服务端。
+   与Grpc和Thrift类似，crpc在使用时也需要先编写IDL文件。目前crpc支持同步客户端及
+   协程客户端。可参照soce-redis的异步示例，使用协程连接池，可方便地将同步接口转为异步接口。
+   crpc除了支持普通的调用方式外，还支持无条件广播和条件广播，允许同时将消息发送给多个服务端。
    [详细文档](./crpc/README.md)
 
    - ***fads/***  
@@ -79,7 +79,7 @@ SOCE是Service Oriented Communication Framework的简称，提供基于
    [详细文档](./transport/README.md)
 
    - ***utils/***   
-   一些其它模块可能用到的工具类，主要包括分发队列、条件表达式、snowflake算法、索引列表和分组列表。
+   一些其它模块可能用到的工具类，主要包括分发队列、阻塞队列、双缓充队列、条件表达式、snowflake算法、索引列表、分组列表以及读写锁等。
    [详细文档](./utils/README.md)
    
 # 编译

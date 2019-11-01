@@ -35,7 +35,7 @@ namespace utils {
       transport_(transport)
   {
     req_queue_.reset(new BlockingQueue<ExecutorRequest>(max_queue_size));
-    transport_->watch(resp_queue_.get_consumer_fd(),
+    transport_->watch(resp_queue_.get_consumer_fd(0),
                       std::shared_ptr<soce::transport::BypassProcessor>(
                         new soce::transport::BypassProcessor(std::bind(&ExecutorImpl::handle_resp,
                                                                       this,
@@ -148,8 +148,8 @@ namespace utils {
   {
     (void) fd;
 
-    soce::utils::DQVector<ExecutorResponse> resps;
-    auto rc = resp_queue_.try_consume(resps);
+    soce::utils::FQVector<ExecutorResponse> resps;
+    auto rc = resp_queue_.try_consume(0, resps);
     if (rc){
       return;
     }

@@ -27,6 +27,7 @@
 #include "service-if.h"
 #include "gen-cpp/server-attr.h"
 #include "proto/type-tree.h"
+#include "proto/fads-message.h"
 #include "cort-engine/cort-engine.h"
 #include "crpc/interceptor.h"
 #include "crpc/worker-thread.h"
@@ -56,14 +57,26 @@ namespace crpc{
         virtual std::string get_service_info();
 
     protected:
-        inline void* get_raw_req(){return raw_req_;}
+        std::string handle_request(const std::string& data,
+                                   const std::string& service,
+                                   const std::string& method,
+                                   soce::fads::FadsMessage* req_msg,
+                                   soce::crpc::CrpcReqHeader& req_header,
+                                   soce::fads::FadsMessage* resp_msg,
+                                   soce::crpc::CrpcRespHeader& resp_header,
+                                   std::function<void()> handler);
+        std::string handle_request(const std::string& data,
+                                   soce::fads::FadsMessage* req_msg,
+                                   soce::crpc::CrpcReqHeader& req_header,
+                                   std::function<void()> handler);
+        inline soce::fads::FadsMessage* get_raw_req(){return raw_req_;}
 
     protected:
         soce::crpc::attr::ServerAttrs attrs_;
         std::unordered_map<std::string, std::function<std::string(const std::string&)>> handlers_;
         std::vector<uint32_t> method_index_{0, 2};
         std::vector<uint32_t> reqid_index_{0, 3};
-        void* raw_req_ = NULL;
+        soce::fads::FadsMessage* raw_req_ = NULL;
     };
 
 } // namespace crpc

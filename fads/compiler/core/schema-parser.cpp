@@ -17,7 +17,6 @@
  * under the License.
  */
 
-#include <iostream>
 #include <algorithm>
 #include <cctype>
 #include <vector>

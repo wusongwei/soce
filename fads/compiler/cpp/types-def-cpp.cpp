@@ -54,7 +54,7 @@ namespace compiler{
         if (!SSvrCrt.empty()){
             oss << "#include \"gen-cpp/crpc-header.h\"\n";
         }
-        oss << "#include \"proto/soce-proto.h\"\n#include \"proto/type-tree.h\"\n\nusing std::string;\nusing std::bitset;\n";
+        oss << "#include \"proto/fads-message.h\"\n#include \"proto/fads-message.h\"\n#include \"proto/soce-proto.h\"\n#include \"proto/type-tree.h\"\n\nusing std::string;\nusing std::bitset;\n";
         for (auto& i : types){
             if (i == "list" || i == "vector"){
                 oss << "using std::vector;\n";
@@ -147,12 +147,16 @@ namespace compiler{
                              function<void(ostringstream&, size_t)> WriteEqualBody,
                              function<void(ostringstream&, size_t)> WriteHashBody,
                              function<void(ostringstream&, size_t)> WriteInterface,
-                             function<void(ostringstream&, size_t)> WriteMembers)
+                             function<void(ostringstream&, size_t)> WriteMembers,
+                             bool is_struct = false)
     {
         oss << indent(margin, 0)
             << "class "
-            << cname
-            << "{\n";
+            << cname;
+        if (is_struct) {
+            oss << " : public soce::fads::FadsMessage";
+        }
+        oss << "{\n";
         WriteSetterGetter(oss, margin + Utils::get_indent());
         oss << "\n"
             << indent(margin, 0)
@@ -1067,9 +1071,9 @@ namespace compiler{
                      },
                      [this](ostringstream& oss, size_t margin){
                          oss << indent(margin, 1)
-                             << "size_t deserialize(soce::proto::ProtoIf* proto);\n"
+                             << "virtual size_t deserialize(soce::proto::ProtoIf* proto);\n"
                              << indent(margin, 1)
-                             << "size_t serialize(soce::proto::ProtoIf* proto) const;\n"
+                             << "virtual size_t serialize(soce::proto::ProtoIf* proto) const;\n"
                              << indent(margin, 1)
                              << "static soce::proto::TypeTree* get_type_tree();\n";
                      },
@@ -1107,8 +1111,8 @@ namespace compiler{
                              << "static "
                              << TTName
                              << " s_type_tree;\n";
-                     }
-            );
+                     },
+                     true);
     }
 
     void TypeStructCpp::gen_impl(ostringstream& oss, size_t margin)

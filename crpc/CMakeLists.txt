@@ -13,6 +13,8 @@ else(__SOCE_CRPC__)
 	include_directories( ${SOCE_CRPC_ROOT} )
 
 	aux_source_directory(${SOCE_CRPC_ROOT}/src SRC_LIST)
+    aux_source_directory(${SOCE_CRPC_ROOT}/src/proxy SRC_LIST)
+	aux_source_directory(${SOCE_CRPC_ROOT}/src/client SRC_LIST)
 	aux_source_directory(${SOCE_CRPC_ROOT}/gen-cpp SRC_LIST)
 
 endif(__SOCE_CRPC__)

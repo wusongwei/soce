@@ -67,7 +67,7 @@ namespace log4rel{
         impl_->set_default_key(dkey);
     }
 
-    const std::string& Logger::get_default_key() const
+    std::string Logger::get_default_key() const
     {
         return impl_->get_default_key();
     }
@@ -104,8 +104,6 @@ namespace log4rel{
 
     LoggerMgr::LoggerMgr()
     {
-        cur_logger_.reset(new Logger);
-        add_logger("default", cur_logger_);
 #if defined(SOCE_DISABLE_LOG4REL)
         enable_ = false;
 #endif
@@ -146,9 +144,25 @@ namespace log4rel{
         return std::move(out);
     }
 
-    std::shared_ptr<Logger> LoggerMgr::get_cur_logger()
+    GlobalLoggerMgr::GlobalLoggerMgr()
+    {
+        cur_logger_.reset(new Logger);
+        add_logger("default", cur_logger_);
+    }
+
+    std::shared_ptr<Logger> GlobalLoggerMgr::get_cur_logger()
     {
         std::lock_guard<std::mutex> lck(mtx_);
+        return cur_logger_;
+    }
+
+    std::shared_ptr<Logger> LocalLoggerMgr::get_cur_logger()
+    {
+        if (!cur_logger_) {
+            add_logger("default", SOCE_GLOBAL_LOGGER_MGR.get_cur_logger());
+            switch_logger("default");
+        }
+
         return cur_logger_;
     }
 

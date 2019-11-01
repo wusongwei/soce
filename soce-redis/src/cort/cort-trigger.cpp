@@ -18,7 +18,6 @@
 */
 
 #if defined(SOCE_USE_COROUTINE)
-#include <iostream>
 #include "cort-trigger.h"
 #include "utils/time-helper.h"
 

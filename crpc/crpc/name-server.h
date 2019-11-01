@@ -100,6 +100,11 @@ namespace crpc{
         inline std::string get_server_addr() {return server_addr_;}
         void set_processor(std::shared_ptr<soce::transport::ProcessorIf> processor);
         void watch_service(const std::string& service);
+        inline void set_reconnect_time(size_t tm_ms) {
+            reconnect_time_ = tm_ms;
+        }
+
+        virtual void watch_all() = 0;
         virtual void on_connected(uint64_t conn_id) = 0;
         virtual int add_server(const std::string& service,
                                const std::string& value) = 0;
@@ -127,13 +132,15 @@ namespace crpc{
         std::shared_ptr<soce::transport::ProcessorIf> processor_;
         std::string server_addr_;
         std::unordered_set<std::string> watched_services_;
+        size_t reconnect_time_ = 1000;
     };
 
     class NameServerZk : public NameServerIf
     {
     public:
         int init(const std::string& zk_addr, uint32_t timeout);
-        void set_zk_root(const std::string& zk_root);
+        void set_service_dir(const std::string& service_dir);
+        virtual void watch_all();
         virtual void on_connected(uint64_t conn_id);
         virtual int add_server(const std::string& service,
                                const std::string& value);
@@ -159,23 +166,33 @@ namespace crpc{
 
     private:
         void resolve_servers(std::vector<std::pair<std::string, std::string>>& servers);
+        void reconnect();
 
     private:
-        using TempSvrInfo = struct{
-            std::string addr;
+        using ConnStatus = enum{
+            kConnStatusBroken,
+            kConnStatusConencting,
+            kConnStatusConencted
+        };
+        using ServerStatus = struct {
+            bool conn_with_ns;
+            ConnStatus status;
             soce::crpc::attr::ServerAttrs attrs;
         };
 
     private:
         std::string zk_addr_;
         soce::zookeeper::SoceZk soce_zk_;
-        std::string zk_root_ = "/soce";
+        std::string service_dir_ = "/soce/service";
         int watch_fd_ = 0;
         ServerRepo server_repo_;
         soce::utils::RWLock lock_;
         std::unordered_map<uint64_t, std::string> connid2addr_;
         std::unordered_map<std::string, uint64_t> addr2connid_;
-        std::unordered_map<uint64_t, TempSvrInfo> temp_svr_info_;
+        std::unordered_map<uint64_t, std::string> connecting_;
+        std::unordered_map<std::string, ServerStatus> server_status_;
+        std::unordered_set<std::string> broken_servers_;
+        soce::transport::TransportIf::tmid_t reconn_timer_ = 0;
         std::vector<uint32_t> service_index_{0, 1};
         std::vector<uint32_t> method_index_{0, 2};
     };

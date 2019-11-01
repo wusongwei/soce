@@ -3,17 +3,23 @@ namespace soce.crpc
 enum RpcType
 {
     kRpcTypeReq,
-    kRpcTypeResp,
+    kRpcTypeNullReq,
     kRpcTypeCondCast,
-    kRpcTypeUncondCast
+    kRpcTypeUncondCast,
+    kRpcTypeResp
 }
 
 enum RpcStatus
 {
     kRpcStatusOK,
+    kRpcStatusIoError,
     kRpcStatusProtoError,
-    kRpcStatusNoService,
-    kRpcStatusAOPFailed
+    kRpcStatusServiceNotAvailable,
+    kRpcStatusInternalError,
+    kRpcStatusTimeout,
+    kRpcStatusAOPFailed,
+    kRpcStatusBroadcastOk, 
+    kRpcStatusBroadcastError
 }
 
 struct CrpcReqHeader
@@ -21,26 +27,29 @@ struct CrpcReqHeader
     RpcType type;
     string service;
     string method;
-    i64 req_id;
-    i32 tid;
+    byte[8] req_id;
     string target_addr;
     map<string, string> ext;
 
-    require {type, service, method, req_id, tid}
+    require {type, service, method, req_id}
 }
 
 struct CrpcRespHeader
 {
     RpcType type;
-    i64 req_id;
-    i32 tid;
+    byte[8] req_id;
     RpcStatus status;
     map<string, string> ext;
 
-    require {type, req_id, tid, status}
+    require {type, req_id, status}
 }
 
 struct CrpcErrorResp
 {
     CrpcRespHeader header;
+}
+
+struct CrpcRequest
+{
+    CrpcReqHeader header;
 }

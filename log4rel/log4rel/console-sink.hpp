@@ -21,6 +21,7 @@
 #define _CONSOLE_LOGGER_Ki40c5lHNn_H_
 
 #include <iostream>
+#include <string>
 #include "sink-if.h"
 
 namespace soce{
@@ -29,11 +30,9 @@ namespace log4rel{
     class ConsoleSink : public ISink
     {
     public:
-        virtual void log(const struct timeval& time, LogLevel level, const std::string& msg) {
-                (void) time;
-                (void) level;
-                std::cout << msg << std::endl;
-            }
+        virtual void log(const char* data, size_t len) {
+            std::cout << std::string(data, len);
+        }
     };
 
 } // namespace log4rel

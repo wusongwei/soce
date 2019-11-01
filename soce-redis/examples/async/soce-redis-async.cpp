@@ -64,7 +64,7 @@ void SoceRedisAsync::thread_entry()
         });
 
 
-    tle.watch(queue_.get_consumer_fd(),
+    tle.watch(queue_.get_consumer_fd(0),
               std::shared_ptr<BypassProcessor>(new BypassProcessor(
                                                    std::bind(&SoceRedisAsync::handle_request,
                                                              this,
@@ -76,8 +76,8 @@ void SoceRedisAsync::handle_request(int fd)
 {
     (void) fd;
 
-    soce::utils::DQVector<AsyncRequest> requests;
-    if (queue_.try_consume(requests)){
+    soce::utils::FQVector<AsyncRequest> requests;
+    if (queue_.try_consume(0, requests)){
         return;
     }
 

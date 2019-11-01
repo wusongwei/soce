@@ -27,8 +27,7 @@
 #include <unordered_map>
 #include <sstream>
 #include <stdint.h>
-#include <mutex>
-
+#include "utils/rwlock.hpp"
 #include "log4rel/type.h"
 #include "log4rel/sink-if.h"
 #include "filter.h"
@@ -49,7 +48,7 @@ namespace log4rel{
         void set_fmt(LogFmt fmt);
         LogFmt get_fmt();
         void set_default_key(const std::string& dkey);
-        const std::string& get_default_key();
+        std::string get_default_key();
         int add_key_filter(LogFilterType type, const std::string& filter);
         int del_key_filter(LogFilterType type, const std::string& filter);
         int add_record_filter(LogFilterType type, const std::string& filter);
@@ -127,7 +126,7 @@ namespace log4rel{
         LogFieldPidPtr log_pid_;
         LogFieldTidPtr log_tid_;
         bool default_sink_ = true;
-        std::mutex mtx_;
+        soce::utils::RWLock lock_;
     };
 
 } // namespace log4rel

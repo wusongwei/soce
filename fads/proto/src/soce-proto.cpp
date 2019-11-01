@@ -17,7 +17,6 @@
 * under the License.
 */
 
-#include <iostream>
 #include <algorithm>
 #include "proto/soce-proto.h"
 

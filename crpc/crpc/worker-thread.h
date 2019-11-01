@@ -66,7 +66,6 @@ namespace crpc{
         inline void add_service(std::shared_ptr<ServiceIf> service) {
             services_[service->get_name()] = service;
         }
-        inline int get_tid() {return tid_;}
         inline void add_request(int64_t req_id, soce::cortengine::CortEngine::CortId cid){
             request_stubs_[req_id].cid = cid;
         }

@@ -1,0 +1,15 @@
+namespace crpc.example
+
+service SyncDemo
+{
+    string hello(string msg);
+}
+
+service CortDemo
+{
+    i32 echo(i32 p);
+    void test_void(i32 p);
+    null test_null(i32 p);
+    condcast test_condcast(i32 p);
+    uncondcast test_uncondcast(i32 p);
+}

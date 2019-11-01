@@ -17,7 +17,6 @@
 * under the License.
 */
 
-#include <iostream>
 #include <stack>
 #include <regex>
 #include "filter.h"

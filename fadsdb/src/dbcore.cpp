@@ -26,12 +26,10 @@
 #include "dbcmd.h"
 #include "proto/dynamic-getter.h"
 #include "utils/hash.h"
-#include "log4rel/async-logger.h"
-#include "log4rel/console-sink.hpp"
+#include "log4rel/logger.h"
 
 using std::string;
-using soce::utils::DispatchQueue_1n;
-using soce::utils::DispatchQueue_n1;
+using soce::utils::DispatchQueue;
 using namespace soce::log4rel;
 
 namespace soce{
@@ -49,14 +47,11 @@ namespace fadsdb{
 
     int DbCore::init(uint32_t threads)
     {
-        SAsyncLogger.init_thread_logger();
-
-        req_queue_.reset(new DispatchQueue_1n<SqlData>(threads, [](const SqlData& data, size_t consumers){
+        req_queue_.reset(new DispatchQueue<SqlData>(threads, [](const SqlData& data, size_t consumers){
                     uint32_t slot = soce::utils::Hash::crc32(data.key_);
                     return slot % consumers;
                 }));
-        resp_queue_.reset(new DispatchQueue_n1<RespData>(threads));
-
+        resp_queue_.reset(new DispatchQueue<RespData>());
         resp_handler_ = std::bind(&DbCore::DefaultRespHandler,
                                   this,
                                   std::placeholders::_1);
@@ -79,7 +74,6 @@ namespace fadsdb{
             }
         }
 
-        sink_.server();
         return rc;
     }
 
@@ -96,7 +90,7 @@ namespace fadsdb{
 
         if (cmd_type == kCmdCreate){
             Status rc = create(key);
-            resp_queue_->produce(0, req_id, rc, std::string());
+            resp_queue_->produce(req_id, rc, std::string());
         }
         else{
             req_queue_->produce(req_id, cmd_type, key, std::move(data));
@@ -118,7 +112,7 @@ namespace fadsdb{
 
         if (cmd_type == kCmdCreate){
             Status rc = create(key);
-            resp_queue_->produce(0, req_id, rc, std::string());
+            resp_queue_->produce(req_id, rc, std::string());
         }
         else{
             req_queue_->produce(req_id, cmd_type, key, data, len);
@@ -159,12 +153,9 @@ namespace fadsdb{
 
     void DbCore::resp_thread_entry()
     {
-        SAsyncLogger.init_thread_logger();
-
-        soce::utils::DQVector<RespData> resp;
         while (run_){
-            resp.clear();
-            resp_queue_->try_consume_for(resp, timeout_);
+            soce::utils::FQVector<RespData> resp;
+            resp_queue_->try_consume_for(0, resp, timeout_);
 
             for (auto& i : resp){
                 resp_handler_(i);
@@ -191,8 +182,8 @@ namespace fadsdb{
         SOCE_INFO << _S("type", resp.req_id_) << _S("data", resp.data_.size());
     }
 
-    DbCore::DbWorker::DbWorker(std::shared_ptr<DispatchQueue_1n<SqlData>> req_queue,
-                               std::shared_ptr<DispatchQueue_n1<RespData>> resp_queue,
+    DbCore::DbWorker::DbWorker(std::shared_ptr<DispatchQueue<SqlData>> req_queue,
+                               std::shared_ptr<DispatchQueue<RespData>> resp_queue,
                                size_t index)
         : req_queue_(req_queue), resp_queue_(resp_queue), index_(index)
     {
@@ -215,14 +206,15 @@ namespace fadsdb{
 
     void DbCore::DbWorker::thread_entry()
     {
-        SAsyncLogger.init_thread_logger();
-
-        soce::utils::DQVector<SqlData> reqs;
         while (run_){
-            reqs.clear();
+            soce::utils::FQVector<SqlData> reqs;
             req_queue_->try_consume_for(index_, reqs, timeout_);
             do_sql(reqs);
         }
+
+        soce::utils::FQVector<SqlData> reqs;
+        req_queue_->try_consume_for(index_, reqs, timeout_);
+        do_sql(reqs);
     }
 
     void DbCore::DbWorker::add_tables(std::vector<std::shared_ptr<FadsTable>> tables)
@@ -231,7 +223,7 @@ namespace fadsdb{
         db_.add_tables(tables);
     }
 
-    void DbCore::DbWorker::do_sql(soce::utils::DQVector<SqlData>& reqs)
+    void DbCore::DbWorker::do_sql(soce::utils::FQVector<SqlData>& reqs)
     {
         std::lock_guard<std::mutex> lck(mtx_);
 
@@ -264,7 +256,7 @@ namespace fadsdb{
                 break;
             }
 
-            resp_queue_->produce(index_, i.req_id_, rc, std::move(out));
+            resp_queue_->produce(i.req_id_, rc, std::move(out));
         }
     }
 

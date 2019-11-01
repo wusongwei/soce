@@ -33,9 +33,17 @@ namespace compiler{
 
     private:
         void gen_server_header(const std::unordered_map<std::string, SCService>& services, std::ostringstream& oss);
+        void gen_sync_client_header(const std::unordered_map<std::string, SCService>& services, std::ostringstream& oss);
         void gen_cort_client_header(const std::unordered_map<std::string, SCService>& services, std::ostringstream& oss);
         void gen_server_impl(const std::unordered_map<std::string, SCService>& services, std::ostringstream& oss);
+        void gen_sync_client_impl(const std::unordered_map<std::string, SCService>& services, std::ostringstream& oss);
         void gen_cort_client_impl(const std::unordered_map<std::string, SCService>& services, std::ostringstream& oss);
+        void gen_client_header(const std::unordered_map<std::string, SCService>& services,
+                               const std::string& client_type,
+                               std::ostringstream& oss);
+        void gen_client_impl(const std::unordered_map<std::string, SCService>& services,
+                             const std::string& client_type,
+                             std::ostringstream& oss);
     };
 
 } // namespace compiler

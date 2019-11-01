@@ -96,8 +96,7 @@ namespace crpc{
                 CrpcErrorResp err_resp;
                 soce::crpc::CrpcRespHeader& resp_header = err_resp.mutable_header();
                 resp_header.mutable_type() = soce::crpc::kRpcTypeResp;
-                resp_header.mutable_req_id() = header.get_req_id();
-                resp_header.mutable_tid() = header.get_tid();
+                resp_header.set_req_id(header.get_req_id());
                 resp_header.mutable_status() = soce::crpc::kRpcStatusAOPFailed;
 
                 if (do_itcptors(header, service, method, err_resp)){

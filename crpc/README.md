@@ -32,28 +32,28 @@ Crpc在使用以前需要定义Schema，采用fads语法，定义额外的几个
 用于定义方法的返回类型，表示无条件广播。   
    
 ```
-service Echo
+service CortDemo
 {
     i32 echo(i32 p);
-    void do_void_test(i32 p);
-    null do_null_test(i32 p);
-    condcast do_condcast_test(i32 p);
-    uncondcast do_uncondcast_test(i32 p);
+    void test_void(i32 p);
+    null test_null(i32 p);
+    condcast test_condcast(i32 p);
+    uncondcast test_uncondcast(i32 p);
 }
 ```
-示例定义了一个名为Echo的服务，它包含五个方法。   
+示例定义了一个名为CortDemo的服务，它包含五个方法。   
 
 - *echo()*   
 普通的RPC方法，接受一个类型为整形参数，返回值也是一个整形。可以设置过滤条件。
-- *do_void_test()*   
+- *test_void()*   
 返回值类型为void的RPC，接受一个类型为整形的参数。可以设置过滤条件。
-- *do_null_test()*   
+- *test_null()*   
 无返回值的RPC，与void类型不同，null类型表示调用端不会等待服务端响应。
 可以设置过滤条件。
-- *do_condcast_test()*   
-带条件的广播，可以设置过滤条件，调用端不会等待服务端响应。
-- *do_uncondcast_test()*   
-无条件广播，不可以设置过滤条件，调用端不会等待服务端响应。
+- *test_condcast()*   
+带条件的广播，可以设置过滤条件，所有请求成功才算成功。
+- *test_uncondcast()*   
+无条件广播，不可以设置过滤条件，所有请求成功才算成功。
 
 ## 代码生成
 生成代码使用fads提供的编译器，需要首先进入fads/compiler目录，编译生成编译器，
@@ -73,10 +73,11 @@ fadsgen your_schema.fads
 ## 线程模型
 Crpc会开一个单独的线程用于IO处理，具体的业务逻辑交由工作线程处理。工作线程的
 数量由用户指定的模式确定。Crpc允许同时支持多个服务，每个服务可以选择共享线程
-还是独占线程。共享线程的数量由用户指定，默认为CPU的个数。对设置为共享线程模式
-的服务，其请求将按照负载均衡算法均衡到每个线程中。若多个服务都指定共享线程模式，
-则它们共享这些线程。对设置为独占线程模式的服务，会由单独的线程来处理属于此服务
-的请求。即工作线程的总数为共享线程的数量与独占线程模式服务的数量之和。
+还是独占线程。共享线程的数量由用户指定，默认为CPU的个数 * 2 + 1。
+对设置为共享线程模式 的服务，其请求将按照负载均衡算法均衡到每个线程中。
+若多个服务都指定共享线程模式，则它们共享这些线程。对设置为独占线程模式的服务，
+会由单独的线程来处理属于此服务的请求。即工作线程的总数为共享线程的数量
+与独占线程模式服务的数量之和。
 
 ## 使用示例
 目前Crpc还未支持配置文件，因此初始化参数需要靠用户手动指定。服务端依赖于Transport,
@@ -92,19 +93,19 @@ Crpc会开一个单独的线程用于IO处理，具体的业务逻辑交由工�
 ### 服务工厂类
 用于创建具体的服务实例，同时可以为服务中的方法指定过滤条件。
 ```
-class EchoServiceFactory : public ServiceFactoryIf
+class CortDemoFactory : public ServiceFactoryIf
 {
 public:
     virtual std::shared_ptr<ServiceIf> create()
     {
-        EchoService* p = new EchoService();
+        CortDemo* p = new CortDemo();
         p->set_echo_filter("p <= 3 || p > 10");
-        p->set_do_condcast_test_filter("p >= 3");
+        p->set_test_condcast_filter("p >= 3");
         return std::shared_ptr<ServiceIf>(p);
     }
 };
 ```
-示例中创建了EchoService，这echo()和do_condcast_test()方法添加了过滤条件。
+示例中创建了CortDemo服务，并为echo()和test_condcast()方法添加了过滤条件。
 对允许设置过滤条件的方法，在代码生成时都会生成一个设置过滤条件的方法，命名
 规则为set_[method]_filter()。   
 过滤条件是一个字符串，由||、&&以及小括号将多个规则串联起来。每个规则包括三部分，
@@ -147,7 +148,7 @@ public:
             // 设置共享线程数量
             processor->set_shared_thread_num(8);
             // 添加服务，最后一参数表示是否共享线程
-            processor->add_service_factory(std::shared_ptr<ServiceFactoryIf>(new EchoServiceFactory), true);
+            processor->add_service_factory(std::shared_ptr<ServiceFactoryIf>(new CortDemoFactory), true);
             return processor;
         }
 };
@@ -165,7 +166,7 @@ public:
             NameServerZk* nameserver = new NameServerZk;
             nameserver->init("127.0.0.1:2181", 4000);
             // 表示当前服务依赖于Echo服务
-            nameserver->watch_service("Echo");
+            nameserver->watch_service("CortDemo");
             return std::shared_ptr<NameServerIf>(nameserver);
         }
 };
@@ -183,10 +184,34 @@ public:
 ```
 
 ### 客户端调用
-目前只支持协程客户端，此客户端只能在协程环境中使用。如果不更改服务处理类型，
+目前支持同步客户端和协程客户端。
+同步客户端不具备负载均衡及条件功能，它需要与Proxy配合使用。
+Proxy收到请求后会从请求中解析出服务名、方法名等信息，
+如果它还没有监视此服务，则会从命名中心拉取相关信息，建立相应连接。
+它会进行请求的分发以及响应的回传。
+使用Proxy后，其它语言要实现同步客户端就非常方便了，只需要将请求序列化
+后发送给Proxy即可。
+同步客户端在使用以前需要调用init()方法为其指定Proxy地址。
+Proxy启动示例：
+```
+CrpcProxyBuilder builer;
+builer.set_service_addr("127.0.0.1:7890")
+      .set_ns_addr("127.0.0.1:2181")
+      .build()
+      ->start();
+```
+同步客户端使用示例：
+```
+SyncDemoSyncClient client;
+client.init("127.0.0.1", 7890);
+string hello_resp;
+soce::crpc::RpcStatus status = client.hello(hello_resp, "hello");
+```
+
+协程客户端只能在协程环境中使用。如果不更改服务处理类型，
 默认情况下，所有的请求处理函数已经是在协程环境中。此时可按以下方式调用：
 ```
-crpc::sample::EchoCortClient clt;
+crpc::example::CortDemoCortClient clt;
 int value = 0;
 int rc = clt.echo(value, 100); // value用于接收返回结果
 // 处理结果
@@ -234,8 +259,8 @@ Crpc提供了宏SInterceptor来操作拦截器，它是一个非thread_local的�
 服务端。而如果设置的是一个用户服务端的前置拦截器，则会在服务端处理请求前被调用。
 同样，后置拦截器用于拦截服务端发回的响应，以及客户端在收到响应前做一些处理。
 
+
 ## Roadmap
 - 添加配置，通过配置减少初始化代码编写。
-- 支持异步调用方式。
 - 提供etcd注册中心。
 - 提供链路监控、熔断、限流等特性。

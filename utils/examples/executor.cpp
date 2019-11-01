@@ -17,7 +17,6 @@
  * under the License.
  */
 
-#include <iostream>
 #include <unistd.h>
 #include "utils/executor.h"
 #include "transport/transport-libevent.h"
