@@ -22,7 +22,9 @@
 #include <sstream>
 #include "gen-cpp/sample.h"
 #include "proto/binary-proto.h"
+#include "proto/dynamic-node.h"
 #include "proto/dynamic-getter.h"
+#include "proto/dynamic-parser.h"
 #include "log4rel/logger.h"
 
 using namespace std;
@@ -110,7 +112,7 @@ static void sample_complex_type()
     SOCE_INFO << _S("ct2.a", ct2.get_a());
 }
 
-void sample_list()
+static void sample_list()
 {
     SampleList sl;
 
@@ -200,7 +202,7 @@ void sample_list()
     }
 }
 
-void sample_set()
+static void sample_set()
 {
     SampleSet ss;
 
@@ -290,7 +292,7 @@ void sample_set()
     }
 }
 
-void sample_map()
+static void sample_map()
 {
     SampleAsElem sae1;
     sae1.set_a(100);
@@ -340,7 +342,7 @@ void sample_map()
                   << _S("sm2.icc.val", sm2.mutable_icc().begin()->second.get_a());
 }
 
-void sample_dynamic_getter()
+static void sample_dynamic_getter()
 {
     char sample_byte[4] = {'a', 'b', 'c', 'd'};
     ComplexType ct;
@@ -380,6 +382,53 @@ void sample_dynamic_getter()
     SOCE_INFO << _S("mode", "multi") << _S("b", b) << _S("f", f);
 }
 
+static void sample_dynamic_node()
+{
+    char sample_byte[4] = {'a', 'b', 'c', 'd'};
+    ComplexType ct;
+    ct.mutable_pt().set_a(true);
+    ct.mutable_pt().set_b(1);
+    ct.mutable_pt().set_c(2);
+    ct.mutable_pt().set_d(1.1);
+    ct.mutable_pt().set_e(2.2);
+    ct.mutable_pt().set_f("xyz");
+    ct.mutable_pt().set_g(sample_byte);
+    ct.mutable_pt().set_color(red);
+    ct.mutable_a() = 1;
+
+    BinaryProto bp;
+    if (ct.serialize(&bp) == 0){
+        SOCE_ERROR << _D("serialize failed");
+        return;
+    }
+
+    std::shared_ptr<DynamicNodeStruct> node;
+    DynamicParser dp;
+
+#if 0
+    node = dp.parse(bp.data(), bp.size());
+    if (!node) {
+        SOCE_ERROR << _S("error", "without schema");
+        return;
+    }
+#else
+    node = std::make_shared<DynamicNodeStruct>("ComplexType");
+    auto node_pt = std::make_shared<DynamicNodeStruct>("pt");
+    auto node_bool = DynamicNode::create(SoceDataType::kTypeBool);
+    node_bool->set_name("a");
+    node_pt->add(node_bool);
+    auto node_i32 = DynamicNode::create(SoceDataType::kTypeInt32);
+    node_i32->set_name("a");
+    node->add(node_pt);
+    node->add(node_i32);
+    if (dp.parse(bp.data(), bp.size(), node)) {
+        SOCE_ERROR << _S("error", "with schema");
+        return;
+    }
+#endif
+    SOCE_INFO << _S("json", node->to_json());
+}
+
 int main()
 {
     SOCE_CUR_LOGGER->reserve_field(soce::log4rel::kLogFieldLevel, true);
@@ -392,5 +441,7 @@ int main()
     sample_map();
 
     sample_dynamic_getter();
+    sample_dynamic_node();
+
     return 0;
 }
