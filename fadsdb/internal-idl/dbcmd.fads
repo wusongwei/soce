@@ -80,3 +80,25 @@ struct FadsDbSelUp
 
     require {header, key, table, fields}
 }
+
+enum FadsDbRespStatus
+{
+    kOk,
+    kDupKey,
+    kFilteredOut,
+    kErrProto,
+    kErrCrt,
+    kErrTableNotExist,
+    kErrKeyNotExist,
+    kErrInvalidCmd,
+    kErrInvalidField,
+    kErrDoCmd,
+    kErrInternal
+}
+
+struct FadsDbResponse
+{
+    i64 id;
+    FadsDbRespStatus status;
+    string response;      
+}

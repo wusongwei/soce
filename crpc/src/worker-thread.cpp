@@ -180,7 +180,7 @@ namespace crpc{
                 resp_out_->produce(conn_id, std::move(resp));
             }
         }else if (svr->get_svr_proc_type() == ServiceIf::kSvrProcTypeCort){
-            auto id = SCortEngine.create([&]{
+            auto id = SCortEngine.create([=, &data]{
                     string resp = services_[service]->process(data);
                     if (!resp.empty()){
                         resp_out_->produce(conn_id, std::move(resp));

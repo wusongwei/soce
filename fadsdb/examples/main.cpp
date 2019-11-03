@@ -34,17 +34,17 @@
 #include "dbcmd.h"
 #include "dbcore.h"
 #include "proto/dynamic-getter.h"
+#include "proto/dynamic-parser.h"
 #include "log4rel/console-sink.hpp"
+#include "dbserver.h"
+#include "dbclient.h"
 
 using namespace std;
 using namespace fads;
 using namespace soce::fadsdb;
+using namespace soce::proto;
 
 /**
- * 目前还没有为fadsdb添加网络功能，
- * 因此程序的执行结果只能通过日志查看。
- * DbCore::thread_entry()用于从工作线程中收集执行结果，
- * 它仅仅是打印当前命令的类型等简单信息。
  *
  * 本示例主要展示：
  * （1）创建、添加、更新、查询数据库。
@@ -71,112 +71,145 @@ int ModI32(const std::vector<std::string>& params, NodeIf* node)
     return 0;
 }
 
-void RespHandler(const soce::fadsdb::DbCore::RespData& resp)
+class ClientTest
 {
-    string result = resp.result_ == 0 ? "ok" : "failed";
-    switch (resp.req_id_){
-    case 0:
-        SOCE_INFO << _S("cmd", "create") << _S("result", result);
-        break;
+public:
+    ClientTest()
+        {
+            client_ = std::make_shared<FadsDbSyncClient>("127.0.0.1", 1234);
+            thread_ = std::thread(&ClientTest::test, this);
+        }
 
-    case 1:
-        SOCE_INFO << _S("cmd", "insert") << _S("result", result);
-        break;
+    ~ClientTest(){
+        thread_.join();
+    }
 
-    case 2:
-        SOCE_INFO << _S("cmd", "update") << _S("result", result);
-        break;
+private:
+    void test()
+        {
+            sleep(1);
 
-    case 3:
-        SOCE_INFO << _S("cmd", "select") << _S("result", result);
-        if (resp.result_ == kOk){
-            fads::company c;
-            soce::proto::BinaryProto bp;
-            bp.init(const_cast<char*>(resp.data_.c_str()), resp.data_.size());
-            if (c.deserialize(&bp) == 0){
-                SOCE_ERROR << _S("deserialize", "error");
+            create_test();
+            insert_test();
+            update_test();
+            select_test();
+        }
+
+    void create_test()
+        {
+            FadsDbResponse response;
+            int rc = client_->create("struct Worker{string name; i32 age;} table company{string CEO; Worker worker;}", response);
+            if (rc == 0) {
+                SOCE_INFO << _S("create", response.get_status());
             }else{
-                SOCE_INFO << _S("cmd", "select")
-                          << _S("CEO", c.get_CEO())
-                          << _S("Worker.name", c.get_worker().get_name())
-                          << _S("Worker.age", c.get_worker().get_age());
+                SOCE_ERROR << _S("create", rc);
             }
         }
-        break;
-    }
-}
+
+    void insert_test()
+        {
+            Worker worker;
+            worker.mutable_name() = "louis";
+            worker.mutable_age() = 18;
+
+            company scompany;
+            scompany.set_CEO("jobs");
+            scompany.mutable_worker() = worker;
+
+            soce::proto::BinaryProto bp;
+            scompany.serialize(&bp);
+            FadsDbResponse response;
+            int rc = client_->insert(table_, key_, std::string(bp.data(), bp.size()), response);
+
+            if (rc == 0) {
+                SOCE_INFO << _S("insert", response.get_status());
+            }else{
+                SOCE_ERROR << _S("insert", rc);
+            }
+        }
+
+    void update_test()
+        {
+            std::string action = "mod(worker.age, 4)";
+            std::string filter = "CEO == jobs";
+            FadsDbResponse response;
+            int rc = client_->update(table_, key_, action, filter, response);
+            if (rc == 0) {
+                SOCE_INFO << _S("update", response.get_status());
+            }else{
+                SOCE_ERROR << _S("update", rc);
+            }
+        }
+
+    void select_test()
+        {
+            std::string field = "*";
+            std::string filter = "CEO == jobs";
+            FadsDbResponse response;
+            int rc = client_->select(table_, key_, field, filter, response);
+            if (rc == 0) {
+                parse_with_dynamic_parser(response.get_response());
+                parse_with_dynamic_node(response.get_response());
+                parse_with_deserialize(response.get_response());
+            }else{
+                SOCE_ERROR << _S("select", rc);
+            }
+
+        }
+
+    void parse_with_dynamic_parser(const std::string& response)
+        {
+            soce::proto::DynamicParser dp;
+            auto node = dp.parse(response.c_str(), response.size());
+            SOCE_INFO << _S("select_result", node->to_json());
+        }
+
+    void parse_with_dynamic_node(const std::string& response)
+        {
+            auto root = std::make_shared<DynamicNodeStruct>("Company");
+            root->add(std::make_shared<DynamicNodeString>("CEO", ""));
+            auto worker = std::make_shared<DynamicNodeStruct>("Worker");
+            worker->add(std::make_shared<DynamicNodeString>("name", ""));
+            worker->add(std::make_shared<DynamicNodeInt32>("age", 0));
+            root->add(worker);
+            DynamicParser dp;
+            dp.parse(response.c_str(), response.size(), root);
+            SOCE_INFO << _S("select_result", root->to_json());
+        }
+    void parse_with_deserialize(const std::string& response)
+        {
+            fads::company c;
+            BinaryProto bp;
+            bp.init(const_cast<char*>(response.c_str()), response.size());
+            c.deserialize(&bp);
+            SOCE_INFO << _S("cmd", "select")
+                      << _S("CEO", c.get_CEO())
+                      << _S("Worker.name", c.get_worker().get_name())
+                      << _S("Worker.age", c.get_worker().get_age());
+
+        }
+
+private:
+    std::shared_ptr<FadsDbSyncClient> client_;
+    std::thread thread_;
+    std::string table_ = "company";
+    std::string key_ = "apple";
+};
 
 int main()
 {
     SOCE_CUR_LOGGER->set_log_level(soce::log4rel::kLogLevelInfo);
+    SOCE_CUR_LOGGER->reserve_field(soce::log4rel::kLogFieldPos, true);
 
-    int64_t req_id = 0;
     // 为kTypeInt32类型添加mod命令。
     SPlugin.register_update_func(soce::proto::SoceDataType::kTypeInt32,
                                  "mod",
                                  ModI32);
-    DbCore dbcore;
-    dbcore.init(4);
-    dbcore.set_resp_handler(std::bind(RespHandler, std::placeholders::_1));
 
-    // create
-    FadsDbCreate crt;
-    crt.mutable_header().set_type(kCmdCreate);
-    crt.mutable_header().set_id(1);
-    crt.set_schema("struct Worker{string name; i32 age;} table company{string CEO; Worker worker;}");
-    soce::proto::BinaryProto bp;
-    crt.serialize(&bp);
-    dbcore.do_sql(req_id++, bp.data(), bp.size());
+    ClientTest ct;
 
-    // insert
-    Worker worker;
-    worker.mutable_name() = "louis";
-    worker.mutable_age() = 18;
-
-    company scompany;
-    scompany.set_CEO("jobs");
-    scompany.mutable_worker() = worker;
-    bp.reset();
-    scompany.serialize(&bp);
-
-    FadsDbInsert ist;
-    ist.mutable_header().set_type(kCmdInsert);
-    ist.mutable_header().set_id(2);
-    ist.set_table("company");
-    ist.set_key("apple");
-    ist.set_data(std::move(string(bp.data(), bp.size())));
-
-    bp.reset();
-    ist.serialize(&bp);
-    dbcore.do_sql(req_id++, bp.data(), bp.size());
-
-    // update
-    FadsDbUpdate up;
-    up.mutable_header().set_type(kCmdUpdate);
-    up.mutable_header().set_id(3);
-    up.set_table("company");
-    up.set_key("apple");
-    up.set_cmd("mod(worker.age, 4)");
-    up.set_filters("CEO == jobs");
-    bp.reset();
-    up.serialize(&bp);
-    dbcore.do_sql(req_id++, bp.data(), bp.size());
-
-    // select
-    FadsDbSelect sel;
-    sel.mutable_header().set_type(kCmdSelect);
-    sel.mutable_header().set_id(4);
-    sel.set_table("company");
-    sel.set_key("apple");
-    sel.set_fields("*");
-    sel.set_filters("CEO == jobs");
-    bp.reset();
-    sel.serialize(&bp);
-    dbcore.do_sql(req_id++, bp.data(), bp.size());
-
-    while (1){
-        sleep(100);
-    }
+    FadsDbServer server;
+    server.start("127.0.0.1:1234", 8);
 
     return 0;
 }

@@ -42,7 +42,6 @@ namespace fadsdb{
     DbCore::~DbCore()
     {
         run_.store(false);
-        thread_.join();
     }
 
     int DbCore::init(uint32_t threads)
@@ -52,10 +51,6 @@ namespace fadsdb{
                     return slot % consumers;
                 }));
         resp_queue_.reset(new DispatchQueue<RespData>());
-        resp_handler_ = std::bind(&DbCore::DefaultRespHandler,
-                                  this,
-                                  std::placeholders::_1);
-        thread_ = std::thread(&DbCore::resp_thread_entry, this);
 
         int rc = 0;
         for (uint32_t i=0; i<threads; ++i){
@@ -77,7 +72,7 @@ namespace fadsdb{
         return rc;
     }
 
-    Status DbCore::do_sql(int64_t req_id, string&& data)
+    FadsDbRespStatus DbCore::do_sql(int64_t req_id, string&& data)
     {
         soce::proto::DynamicGetter dg;
         dg.init(const_cast<char*>(data.c_str()), data.size());
@@ -89,7 +84,7 @@ namespace fadsdb{
         }
 
         if (cmd_type == kCmdCreate){
-            Status rc = create(key);
+            FadsDbRespStatus rc = create(key);
             resp_queue_->produce(req_id, rc, std::string());
         }
         else{
@@ -99,7 +94,7 @@ namespace fadsdb{
         return kOk;
     }
 
-    Status DbCore::do_sql(int64_t req_id, const char* data, size_t len)
+    FadsDbRespStatus DbCore::do_sql(int64_t req_id, const char* data, size_t len)
     {
         soce::proto::DynamicGetter dg;
         dg.init(const_cast<char*>(data), len);
@@ -111,7 +106,7 @@ namespace fadsdb{
         }
 
         if (cmd_type == kCmdCreate){
-            Status rc = create(key);
+            FadsDbRespStatus rc = create(key);
             resp_queue_->produce(req_id, rc, std::string());
         }
         else{
@@ -151,19 +146,7 @@ namespace fadsdb{
         return std::move(table_creater_.get_custom_type_schema(name));
     }
 
-    void DbCore::resp_thread_entry()
-    {
-        while (run_){
-            soce::utils::FQVector<RespData> resp;
-            resp_queue_->try_consume_for(0, resp, timeout_);
-
-            for (auto& i : resp){
-                resp_handler_(i);
-            }
-        }
-    }
-
-    Status DbCore::create(const string& schema)
+    FadsDbRespStatus DbCore::create(const string& schema)
     {
         std::vector<std::shared_ptr<FadsTable>> tables;
         if (table_creater_.create(schema, tables)){
@@ -175,11 +158,6 @@ namespace fadsdb{
         }
 
         return kOk;
-    }
-
-    void DbCore::DefaultRespHandler(const RespData& resp)
-    {
-        SOCE_INFO << _S("type", resp.req_id_) << _S("data", resp.data_.size());
     }
 
     DbCore::DbWorker::DbWorker(std::shared_ptr<DispatchQueue<SqlData>> req_queue,
@@ -228,7 +206,7 @@ namespace fadsdb{
         std::lock_guard<std::mutex> lck(mtx_);
 
         for (auto& i : reqs){
-            Status rc = kOk;
+            FadsDbRespStatus rc = kOk;
             string out;
 
             switch (i.cmd_type_){
@@ -260,7 +238,7 @@ namespace fadsdb{
         }
     }
 
-    Status DbCore::DbWorker::do_insert(const SqlData& req)
+    FadsDbRespStatus DbCore::DbWorker::do_insert(const SqlData& req)
     {
         soce::proto::BinaryProto bp;
         bp.init(const_cast<char*>(req.data_.c_str()), req.data_.size());
@@ -276,7 +254,7 @@ namespace fadsdb{
                           cmd.get_data().size());
     }
 
-    Status DbCore::DbWorker::do_remove(const SqlData& req)
+    FadsDbRespStatus DbCore::DbWorker::do_remove(const SqlData& req)
     {
         soce::proto::BinaryProto bp;
         bp.init(const_cast<char*>(req.data_.c_str()), req.data_.size());
@@ -289,7 +267,7 @@ namespace fadsdb{
         return db_.remove(cmd.get_table(), cmd.get_key());
     }
 
-    Status DbCore::DbWorker::do_update(const SqlData& req)
+    FadsDbRespStatus DbCore::DbWorker::do_update(const SqlData& req)
     {
         soce::proto::BinaryProto bp;
         bp.init(const_cast<char*>(req.data_.c_str()), req.data_.size());
@@ -305,7 +283,7 @@ namespace fadsdb{
                           (cmd.has_filters() ? cmd.get_filters() : ""));
     }
 
-    Status DbCore::DbWorker::do_select(const SqlData& req, string& out)
+    FadsDbRespStatus DbCore::DbWorker::do_select(const SqlData& req, string& out)
     {
         soce::proto::BinaryProto bp;
         bp.init(const_cast<char*>(req.data_.c_str()), req.data_.size());
@@ -322,7 +300,7 @@ namespace fadsdb{
                           out);
     }
 
-    Status DbCore::DbWorker::do_selup(const SqlData& req, string& out)
+    FadsDbRespStatus DbCore::DbWorker::do_selup(const SqlData& req, string& out)
     {
         soce::proto::BinaryProto bp;
         bp.init(const_cast<char*>(req.data_.c_str()), req.data_.size());

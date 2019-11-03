@@ -1,0 +1,6 @@
+namespace soce.fadsdb
+
+service FadsDbService
+{
+    string exec(i64 id, string req);
+}

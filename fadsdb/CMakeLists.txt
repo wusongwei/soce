@@ -7,6 +7,7 @@ else(__SOCE_FADSDB__)
 	INCLUDE(${SOCE_ROOT}/utils/CMakeLists.txt)
 	INCLUDE(${SOCE_ROOT}/fads/proto/CMakeLists.txt)
 	INCLUDE(${SOCE_ROOT}/log4rel/CMakeLists.txt)
+	INCLUDE(${SOCE_ROOT}/crpc/CMakeLists.txt)
 
 	INCLUDE_DIRECTORIES( ${SOCE_FADSDB_ROOT}/src )
 	INCLUDE_DIRECTORIES( ${SOCE_FADSDB_ROOT}/gen-cpp )

@@ -26,8 +26,8 @@
 #include <atomic>
 #include "fads-db.h"
 #include "table-creater.h"
-#include "status.h"
 #include "utils/dispatch-queue.hpp"
+#include "dbcmd.h"
 #include "log4rel/logger.h"
 
 namespace soce{
@@ -63,7 +63,7 @@ namespace fadsdb{
 
         using RespData = struct RespData{
             RespData(){}
-        RespData(int64_t req_id, Status result, std::string&& data)
+        RespData(int64_t req_id, FadsDbRespStatus result, std::string&& data)
         : req_id_(req_id),
                 result_(result),
                 data_(std::move(data))
@@ -71,13 +71,12 @@ namespace fadsdb{
                 }
 
             int64_t req_id_ = 0;
-            Status result_ = kOk;
+            FadsDbRespStatus result_ = kOk;
             std::string data_;
         };
 
     public:
         class DbWorker;
-        using RespHandler = std::function<void(const RespData& resp)>;
 
     public:
         DbCore();
@@ -92,13 +91,9 @@ namespace fadsdb{
          *         -1 failed
          */
         int init(uint32_t threads);
-
-        /*
-         * Set RespHandler to handle the response.
-         * Just print by default.
-         */
-        inline void set_resp_handler(RespHandler handler){
-            resp_handler_ = handler;
+        std::shared_ptr<soce::utils::DispatchQueue<RespData>> get_resp_queue()
+        {
+            return resp_queue_;
         }
 
         /*
@@ -112,8 +107,8 @@ namespace fadsdb{
          * @return 0  success
          *         -1 failed
          */
-        Status do_sql(int64_t req_id, std::string&& data);
-        Status do_sql(int64_t req_id, const char* data, size_t len);
+        FadsDbRespStatus do_sql(int64_t req_id, std::string&& data);
+        FadsDbRespStatus do_sql(int64_t req_id, const char* data, size_t len);
 
         std::string get_tables();
         std::string get_custom_type();
@@ -124,16 +119,13 @@ namespace fadsdb{
 
     private:
         void resp_thread_entry();
-        Status create(const std::string& schema);
-        void DefaultRespHandler(const RespData& resp);
+        FadsDbRespStatus create(const std::string& schema);
 
     private:
         TableCreater table_creater_;
         std::vector<std::shared_ptr<DbWorker>> workers_;
         std::shared_ptr<soce::utils::DispatchQueue<SqlData>> req_queue_;
         std::shared_ptr<soce::utils::DispatchQueue<RespData>> resp_queue_;
-        RespHandler resp_handler_;
-        std::thread thread_;
         std::atomic<bool> run_{true};
         uint32_t timeout_ = 1000;
         std::vector<uint32_t> cmd_type_index_{0, 0};
@@ -153,11 +145,11 @@ namespace fadsdb{
 
     private:
         void do_sql(soce::utils::FQVector<SqlData>& reqs);
-        Status do_insert(const SqlData& req);
-        Status do_remove(const SqlData& req);
-        Status do_update(const SqlData& req);
-        Status do_select(const SqlData& req, std::string& out);
-        Status do_selup(const SqlData& req, std::string& out);
+        FadsDbRespStatus do_insert(const SqlData& req);
+        FadsDbRespStatus do_remove(const SqlData& req);
+        FadsDbRespStatus do_update(const SqlData& req);
+        FadsDbRespStatus do_select(const SqlData& req, std::string& out);
+        FadsDbRespStatus do_selup(const SqlData& req, std::string& out);
 
     private:
         std::thread thread_;

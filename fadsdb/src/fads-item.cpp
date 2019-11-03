@@ -1,21 +1,21 @@
 /*
-* Licensed to the Apache Software Foundation (ASF) under one
-* or more contributor license agreements. See the NOTICE file
-* distributed with this work for additional information
-* regarding copyright ownership. The ASF licenses this file
-* to you under the Apache License, Version 2.0 (the
-* "License"); you may not use this file except in compliance
-* with the License. You may obtain a copy of the License at
-*
-*   http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing,
-* software distributed under the License is distributed on an
-* "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-* KIND, either express or implied. See the License for the
-* specific language governing permissions and limitations
-* under the License.
-*/
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements. See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership. The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License. You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 
 #include <vector>
 #include <unordered_set>
@@ -54,7 +54,7 @@ namespace fadsdb{
         return 0;
     }
 
-    Status FadsItem::update(const string& cmd, const string& filters)
+    FadsDbRespStatus FadsItem::update(const string& cmd, const string& filters)
     {
         if (!match(filters)){
             return kFilteredOut;
@@ -79,19 +79,19 @@ namespace fadsdb{
         return kOk;
     }
 
-    Status FadsItem::select(const string& fields,
-                            const string& filters,
-                            string& out)
+    FadsDbRespStatus FadsItem::select(const string& fields,
+                                      const string& filters,
+                                      string& out)
     {
         return select(fields, filters, true, out);
     }
 
-    Status FadsItem::selup(const string& fields,
-                           const string& uncond_cmds,
-                           const string& precmds,
-                           const string& subcmds,
-                           const string& filters,
-                           string& out)
+    FadsDbRespStatus FadsItem::selup(const string& fields,
+                                     const string& uncond_cmds,
+                                     const string& precmds,
+                                     const string& subcmds,
+                                     const string& filters,
+                                     string& out)
     {
         vector<OperationFields> vec_uncond_cmds;
         vector<OperationFields> vec_precmds;
@@ -110,7 +110,7 @@ namespace fadsdb{
         }
 
         bool need_restore = false;
-        Status rc = kOk;
+        FadsDbRespStatus rc = kOk;
         do{
             if (do_cmds(vec_uncond_cmds)){
                 rc = kErrDoCmd;
@@ -154,10 +154,10 @@ namespace fadsdb{
         }
     }
 
-    Status FadsItem::select(const string& fields,
-                            const string& filters,
-                            bool check_match,
-                            string& out)
+    FadsDbRespStatus FadsItem::select(const string& fields,
+                                      const string& filters,
+                                      bool check_match,
+                                      string& out)
     {
         if (check_match && !match(filters)){
             return kFilteredOut;
