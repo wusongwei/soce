@@ -61,7 +61,7 @@ namespace crpc{
         if (transport_->listen(addr_, processor_, &fd)){
             return -1;
         }
-        string server_addr;
+        std::string server_addr;
         if (SocketHelper::get_socket_name((int)fd, server_addr)){
             return -1;
         }

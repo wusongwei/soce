@@ -23,6 +23,7 @@
 #include "proto/binary-proto.h"
 #include "utils/dispatch-queue.hpp"
 #include "crpc/crpc-proxy.h"
+#include "crpc/nameserver/name-server-zk.h"
 #include "entry-processor.h"
 
 using namespace soce::utils;

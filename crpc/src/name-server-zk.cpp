@@ -19,7 +19,7 @@
 
 #include <unistd.h>
 #include <cassert>
-#include "crpc/name-server.h"
+#include "crpc/nameserver/name-server-zk.h"
 #include "transport/evtfd-processor.h"
 #include "log4rel/logger.h"
 #include "soce-zk/soce-zk.h"

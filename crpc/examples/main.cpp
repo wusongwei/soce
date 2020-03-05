@@ -29,6 +29,7 @@
 #include "proto/binary-proto.h"
 #include "crpc/interceptor.h"
 #include "crpc/crpc-proxy.h"
+#include "crpc/nameserver/name-server-zk.h"
 #include "gen-cpp/example.h"
 #include "gen-cpp/example-service.h"
 
@@ -259,6 +260,9 @@ void proxy()
 
 int main()
 {
+    // auto logger = SOCE_GLOBAL_LOGGER_MGR.get_cur_logger();
+    // logger->set_log_level(soce::log4rel::kLogLevelInfo);
+
     // std::string service = "CortDemo";
     // std::string method = "echo";
     // SInterceptor.add_before_itcptor("echo_before", 1, interceptor_before, service, method, false);

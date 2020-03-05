@@ -24,7 +24,7 @@
 #include <memory>
 #include "factory.h"
 #include "processor.h"
-#include "name-server.h"
+#include "nameserver/name-server.h"
 #include "utils/snowflake.h"
 
 namespace soce{

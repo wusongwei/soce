@@ -27,7 +27,7 @@
 #include <unordered_map>
 #include <mutex>
 #include "service-if.h"
-#include "name-server.h"
+#include "nameserver/name-server.h"
 #include "transport/transport-if.h"
 #include "cort-engine/cort-engine.h"
 #include "utils/snowflake.h"

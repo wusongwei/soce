@@ -26,7 +26,7 @@
 #include <functional>
 #include "base-processor.h"
 #include "service-if.h"
-#include "name-server.h"
+#include "nameserver/name-server.h"
 #include "utils/snowflake.h"
 #include "log4rel/logger.h"
 #include "factory.h"
