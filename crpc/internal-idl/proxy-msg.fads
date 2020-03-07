@@ -1,0 +1,27 @@
+namespace soce.crpc.proxy
+
+enum ProxyMsgType
+{
+    kProxyMsgTypeServerInfo,
+    kProxyMsgTypeRegister,
+    kProxyMsgTypeWatchService
+}
+
+struct ProxyMsgServerInfo
+{
+    ProxyMsgType type;
+    string server_addr;
+}
+
+struct ProxyMsgRegisterInfo
+{
+    ProxyMsgType type;
+    string service;
+    string filters;
+}
+
+struct ProxyMsgWatchService
+{
+    ProxyMsgType type;
+    string service;
+}

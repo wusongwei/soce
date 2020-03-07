@@ -148,8 +148,6 @@ namespace crpc{
             }
             method_filter.set_filter(std::move(oss.str()));
             attrs_.mutable_methods()[method] = method_filter;
-
-            CRPC_DEBUG << _S("Filter", oss.str());
         }
 
         return 0;
@@ -163,8 +161,6 @@ namespace crpc{
         if (len != 0){
             rc.assign(bp.data(), bp.size());
         }
-
-        CRPC_DEBUG << _S("ServiceInfo", rc);
 
         return std::move(rc);
     }

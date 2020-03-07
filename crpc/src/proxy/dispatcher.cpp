@@ -18,6 +18,7 @@
  */
 
 #include "dispatcher.h"
+#include "crpc/log.h"
 #include "crpc/worker-thread.h"
 #include "transport/bypass-processor.h"
 #include "proto/binary-proto.h"
@@ -97,7 +98,11 @@ namespace crpc {
                     append_resp(conn_id, true, soce::crpc::kRpcStatusProtoError);
                     return;
                 }
-                
+
+                CRPC_DEBUG << _S("CortId", SCortEngine.get_cur_cort_id())
+                           << _S("OldReqId", *(int64_t*)old_req_id)
+                           << _S("ReplacedReqId", req_id);
+
                 crpc_req.mutable_header().set_req_id((char*)&req_id);
                 work_thread->append_req(crpc_req.get_header(),
                                         std::move(std::string(data, size)));
@@ -106,13 +111,20 @@ namespace crpc {
                 SCortEngine.yield();
                 work_thread = soce::crpc::WorkerThread::s_self;
                 std::string* resp_str = work_thread->get_last_resp();
+
+                CRPC_DEBUG << _D("CoroutineWakeUp")
+                           << _S("CortId", SCortEngine.get_cur_cort_id())
+                           << _S("ConnId", conn_id)
+                           << _S("RespSize", resp_str->size());
+
                 if (resp_str == NULL || resp_str->empty()) {
+                    CRPC_DEBUG << _D("EmptyResp");
                     append_resp(conn_id, true, soce::crpc::kRpcStatusServiceNotAvailable);
                     return;
                 }
 
-                ds.init(const_cast<char*>(resp_str->data()), resp_str->size());
-                ds.set_bytes(reqid_index_, old_req_id, 8);
+                ds.init(const_cast<char*>(resp_str->data() + 4), resp_str->size() - 4);
+                ds.set_bytes(respid_index_, old_req_id, 8);
                 resp_queue_->produce(conn_id, false, std::move(*resp_str));
             });
 

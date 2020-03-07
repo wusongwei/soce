@@ -202,8 +202,10 @@ namespace crpc{
         }
 
         for (auto& i : resps){
+            CRPC_DEBUG << _D("RecvResp") << _S("ReqId", i.reqid_);
             auto iter = request_stubs_.find(i.reqid_);
             if (iter == request_stubs_.end()){
+                CRPC_DEBUG << _S("NoCachedReqIdForResp", i.reqid_);
                 continue;
             }
 
@@ -225,10 +227,12 @@ namespace crpc{
                 }
 
                 if (do_resp) {
+                    CRPC_DEBUG << _S("ResumeBroadcastCoroutine", iter->second.cid);
                     SCortEngine.resume(iter->second.cid);
                     request_stubs_.erase(iter);
                 }
             }else{
+                CRPC_DEBUG << _S("ResumeCoroutine", iter->second.cid);
                 last_resp_ = &i.data_;
                 SCortEngine.resume(iter->second.cid);
                 request_stubs_.erase(iter);

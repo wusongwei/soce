@@ -85,7 +85,10 @@ namespace crpc{
                 return;
             }
 
-            CRPC_DEBUG << _S("conn_id", conn_id) << _S("type", "response") << _S("req_id", req_id) << _S("tid", tid);
+            CRPC_DEBUG << _D("RecvResp")
+                       << _S("ConnId", conn_id)
+                       << _S("ReqId", req_id)
+                       << _S("Tid", tid);
 
             iter->second->append_resp(conn_id, req_id, std::move(data));
         }
@@ -95,6 +98,11 @@ namespace crpc{
                 SOCE_ERROR << _S("conn_id", conn_id) << _S("type", "request") << _D("protocol error");
                 return;
             }
+
+            CRPC_DEBUG << _D("RecvRequest")
+                       << _S("RpcType", rpc_type)
+                       << _S("ConnId", conn_id)
+                       << _S("Service", service);
 
             auto iter = req_in_.find(service);
             if (iter != req_in_.end()){
@@ -252,6 +260,11 @@ namespace crpc{
 
                 conn_id_map_[conn_id][tid].insert(req_id);
                 reqid_map_[req_id] = std::make_pair(conn_id, tid);
+
+                CRPC_DEBUG << _D("SendRequest")
+                           << _S("ConnId", conn_id)
+                           << _S("ReqId", req_id)
+                           << _S("Tid", tid);
             }
         }
     }
@@ -275,6 +288,7 @@ namespace crpc{
 
         for (auto& i : resps){
             send(i.conn_id_, i.data_.c_str(), i.data_.size());
+            CRPC_DEBUG << _D("SendResponse") << _S("ConnId", i.conn_id_);
         }
     }
 

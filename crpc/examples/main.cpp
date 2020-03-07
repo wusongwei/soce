@@ -23,6 +23,7 @@
 
 #include <unistd.h>
 #include <thread>
+#include "log4rel/logger.h"
 #include "log4rel/console-sink.hpp"
 #include "crpc/server.h"
 #include "transport/transport-libevent.h"
@@ -30,6 +31,7 @@
 #include "crpc/interceptor.h"
 #include "crpc/crpc-proxy.h"
 #include "crpc/nameserver/name-server-zk.h"
+#include "crpc/nameserver/name-server-proxy.h"
 #include "gen-cpp/example.h"
 #include "gen-cpp/example-service.h"
 
@@ -55,6 +57,9 @@ using namespace std;
  * 的处理函数中调用协程客户端，从而使用crpc框架。
  * 另外一种思路是在start()方法中开启新线程，在新线程中接受外部请求，
  * 再利用分发队列传给工作线程。
+ *
+ * Proxy为消息代理，同步客户端可直接访问代理。
+ * 代理提供普通中转方案和ServiceMesh方案。
  */
 class SyncDemo : public SyncDemoIf
 {
@@ -81,7 +86,7 @@ public:
     void start()
         {
             std::shared_ptr<void> timer_arg;
-            transport_->add_timer(1000,
+            transport_->add_timer(2000,
                                   soce::transport::TransportIf::kTimerModeOnceAndDel,
                                   std::bind(&SyncDemo::timer_entry, this));
         }
@@ -217,12 +222,26 @@ public:
         }
 };
 
+class NameServerProxyFactory : public NameServerFactoryIf
+{
+public:
+    virtual std::shared_ptr<NameServerIf> create()
+        {
+            NameServerProxy* nameserver = new NameServerProxy();
+            nameserver->set_ctl_addr("0.0.0.0:9020");
+            nameserver->set_req_addr("0.0.0.0:9021");
+            nameserver->watch_service("SyncDemo");
+            nameserver->watch_service("CortDemo");
+            return std::shared_ptr<NameServerIf>(nameserver);
+        }
+};
+
 static void client_demo()
 {
-    sleep(1);
+    sleep(4);
 
     SyncDemoSyncClient client;
-    client.init("127.0.0.1", 7890);
+    client.init("0.0.0.0", 9021);
     string hello_resp;
     soce::crpc::RpcStatus status = client.hello(hello_resp, "hello");
     SOCE_INFO << _S("Status", status) << _S("hello_resp", hello_resp);
@@ -252,7 +271,9 @@ int interceptor_after(soce::crpc::CrpcRespHeader& header,soce::crpc::CrpcErrorRe
 void proxy()
 {
     CrpcProxyBuilder builer;
-    builer.set_service_addr("127.0.0.1:7890")
+    builer.set_ctl_addr("0.0.0.0:9020")
+        .set_local_req_addr("0.0.0.0:9021")
+        .set_remote_req_addr("0.0.0.0:9022")
         .set_ns_addr("127.0.0.1:2181")
         .build()
         ->start();
@@ -260,8 +281,10 @@ void proxy()
 
 int main()
 {
-    // auto logger = SOCE_GLOBAL_LOGGER_MGR.get_cur_logger();
-    // logger->set_log_level(soce::log4rel::kLogLevelInfo);
+    auto logger = SOCE_GLOBAL_LOGGER_MGR.get_cur_logger();
+    logger->reserve_field(soce::log4rel::kLogFieldPos, true);
+    logger->add_key_filter(soce::log4rel::kLogFilterAllow, "soce.crpc");
+    logger->set_log_level(soce::log4rel::kLogLevelInfo);
 
     // std::string service = "CortDemo";
     // std::string method = "echo";
@@ -271,10 +294,13 @@ int main()
     std::thread c = std::thread(client_demo);
     std::thread p = std::thread(proxy);
 
-    Server server("127.0.0.1:0",
+    // wait for starting proxy
+    sleep(1);
+    Server server("127.0.0.1:12345",
                   std::shared_ptr<TransportFactoryIf>(new LibeventTransportFactory),
                   std::shared_ptr<ProcessorFactoryIf>(new ProcessorFactory),
-                  std::shared_ptr<NameServerFactoryIf>(new NameServerZkFactory));
+                  //std::shared_ptr<NameServerFactoryIf>(new NameServerZkFactory));
+                  std::shared_ptr<NameServerFactoryIf>(new NameServerProxyFactory));
 
 
     server.run();

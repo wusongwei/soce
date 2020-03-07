@@ -67,6 +67,7 @@ namespace crpc {
         std::shared_ptr<soce::utils::DispatchQueue<ProxyDispatcher::ProxyRequest>> req_queue_;
         std::shared_ptr<soce::utils::DispatchQueue<ProxyDispatcher::ProxyResponse>> resp_queue_;
         std::vector<uint32_t> reqid_index_{0, 3};
+        std::vector<uint32_t> respid_index_{0, 1};
     };
 
 } // namespace crpc

@@ -28,7 +28,9 @@ namespace crpc {
     class CrpcProxy
     {
     public:
-        CrpcProxy(const std::string& service_addr,
+        CrpcProxy(const std::string& ctl_addr,
+                  const std::string& local_req_addr,
+                  const std::string& remote_req_addr,
                   const std::string& ns_addr,
                   size_t ns_timeout,
                   const std::string& service_dir,
@@ -37,7 +39,9 @@ namespace crpc {
         void start();
 
     private:
-        std::string service_addr_;
+        std::string ctl_addr_;
+        std::string local_req_addr_;
+        std::string remote_req_addr_;
         std::string ns_addr_;
         size_t ns_timeout_ = 0;
         std::string service_dir_;
@@ -47,7 +51,9 @@ namespace crpc {
     class CrpcProxyBuilder
     {
     public:
-        CrpcProxyBuilder& set_service_addr(const std::string& addr);
+        CrpcProxyBuilder& set_ctl_addr(const std::string& addr);
+        CrpcProxyBuilder& set_local_req_addr(const std::string& addr);
+        CrpcProxyBuilder& set_remote_req_addr(const std::string& addr);
         CrpcProxyBuilder& set_ns_addr(const std::string& addr);
         CrpcProxyBuilder& set_ns_timeout(size_t timeout);
         CrpcProxyBuilder& set_service_dir(const std::string& dir);
@@ -55,7 +61,9 @@ namespace crpc {
         std::shared_ptr<CrpcProxy> build();
 
     private:
-        std::string service_addr_;
+        std::string ctl_addr_ = "0.0.0.0:9020";
+        std::string local_req_addr_ = "0.0.0.0:9021";
+        std::string remote_req_addr_;
         std::string ns_addr_;
         size_t ns_timeout_ = 4000;
         std::string service_dir_ = "/soce/service";

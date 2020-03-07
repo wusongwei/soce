@@ -28,7 +28,6 @@
 #include "service-if.h"
 #include "nameserver/name-server.h"
 #include "utils/snowflake.h"
-#include "log4rel/logger.h"
 #include "factory.h"
 
 namespace soce{
@@ -41,9 +40,6 @@ namespace crpc{
 
     class Processor : public BaseProcessor
     {
-    public:
-        using LoggerInitiator = std::function<void(std::shared_ptr<soce::log4rel::Logger>)>;
-
     public:
         Processor();
         ~Processor() = default;
@@ -75,8 +71,6 @@ namespace crpc{
         int run_thread_per_service(int& tid);
 
     protected:
-        LoggerInitiator logger_initiator_;
-
         size_t shared_threads_ = 0;
         std::shared_ptr<TransportFactoryIf> transport_factory_;
         std::vector<std::shared_ptr<ServiceFactoryIf>> service_factories_;

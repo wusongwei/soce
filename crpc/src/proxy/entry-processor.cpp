@@ -19,6 +19,7 @@
 
 #include <sys/sysinfo.h>        // get_nprocs
 #include "entry-processor.h"
+#include "crpc/log.h"
 #include "transport/bypass-processor.h"
 
 using namespace soce::transport;
@@ -34,8 +35,8 @@ namespace crpc {
             shared_thread_num_ = 2 * (size_t)get_nprocs() + 1;
         }
 
-     req_queue_ = std::make_shared<DispatchQueue<ProxyDispatcher::ProxyRequest>>(shared_thread_num_);
-     resp_queue_ = std::make_shared<DispatchQueue<ProxyDispatcher::ProxyResponse>>(shared_thread_num_);
+        req_queue_ = std::make_shared<DispatchQueue<ProxyDispatcher::ProxyRequest>>(shared_thread_num_);
+        resp_queue_ = std::make_shared<DispatchQueue<ProxyDispatcher::ProxyResponse>>();
 
         set_transport(transport);
 
@@ -76,6 +77,7 @@ namespace crpc {
         }
 
         for (auto& i : resps){
+            CRPC_DEBUG << _S("SendRespTo", i.conn_id) << _S("RespSize", i.response.size());
             transport_->send(i.conn_id, i.response.data(), i.response.size());
             if (i.error) {
                 close(i.conn_id);

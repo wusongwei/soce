@@ -18,10 +18,9 @@
  */
 
 #include <unistd.h>
-#include <cassert>
 #include "crpc/nameserver/name-server-zk.h"
 #include "transport/evtfd-processor.h"
-#include "log4rel/logger.h"
+#include "crpc/log.h"
 #include "soce-zk/soce-zk.h"
 #include "proto/binary-proto.h"
 #include "proto/dynamic-getter.h"
@@ -364,27 +363,6 @@ namespace crpc{
         return cond_tree;
     }
 
-    void NameServerIf::set_processor(std::shared_ptr<ProcessorIf> processor)
-    {
-        processor_ = processor;
-        transport_ = processor_->get_transport();
-
-        assert(processor_ && transport_);
-    }
-
-    void NameServerIf::watch_service(const std::string& service)
-    {
-        if (watched_services_.find(service) != watched_services_.end()) {
-            return;
-        }
-
-        watched_services_.insert(service);
-
-        if (transport_){
-            do_watch_service(service);
-        }
-    }
-
     int NameServerZk::init(const string& zk_addr, uint32_t timeout)
     {
         zk_addr_ = zk_addr;
@@ -397,7 +375,9 @@ namespace crpc{
 
     void NameServerZk::set_service_dir(const std::string& service_dir)
     {
-        service_dir_ = service_dir;
+        if (!service_dir.empty()) {
+            service_dir_ = service_dir;
+        }
     }
 
     void NameServerZk::watch_all()
@@ -444,6 +424,7 @@ namespace crpc{
                                  const string& value)
     {
         string full_path = service_dir_ + "/" + service + "/" + server_addr_;
+        SOCE_DEBUG << _S("RegisterServer", full_path);
         return soce_zk_.create(full_path, value, soce::zookeeper::kCrtModeEphemeral);
     }
 
