@@ -27,13 +27,17 @@ log4rel认为大部分情况下不需要进行精确的过滤，因此可以为�
 - 支持同步和异步日志。
 
 ## 辅助宏
-log4rel提供SOCE_XXX来打印各级别的日志，其中的XXX可为DEBUG,INFO,ERROR,FATAL等。   
+log4rel提供SOCE_XXX系列宏来打印各级别的日志，其中的XXX可为DEBUG,INFO,ERROR,FATAL等。   
 log4rel提供了_S，_N和_D三个宏来控制格式。当按Json格式打印时，_S表示按字符串
 打印，_N表示按字符打印，_D表示采用默认的键。
 
-log4rel为每个线程都提供了一个LoggerMgr实例，用以管理当前线程创建的Logger实例，
-可通过宏SOCE_LOGGER_MGR访问。同时还提供了宏SOCE_CUR_LOGGER用以访问当前线程
-当前正在使用的Logger实例。   
+log4rel提供SOCE_XXX_IF系列宏来在满足指定的条件情况下才进行日志打印。
+
+log4rel提供了宏来SOCE_GLOBAL_LOGGER_MGR来获取全局的LoggerMgr。对于每个线程
+可通过宏SOCE_LOGGER_MGR访问线程特定的LoggerMgr。当线程特定的LoggerMgr没有添加
+logger时，会将全局logger添加进去，从而使得默认情况下所有线程公用一个logger。
+如果有需要，也可通过LoggerMgr的add_logger()和switch_logger()添加和转换logger。
+同时还提供了宏SOCE_CUR_LOGGER用以访问当前线程当前正在使用的Logger实例。   
 
 ## Logger
 在线程中可通过宏SOCE_CUR_LOGGER访问当前的Logger实例，为其设置一些属性。相应接口如下：
@@ -81,37 +85,6 @@ LoggerMgr用于Logger管理，主要接口为：
 
 - *std::vector<std::shared_ptr<Logger>> get_loggers()*   
 获取所有日志，从而查看/修改它们的属性。
-
-## 共享Logger
-Logger是线程安全的，若要每个线程共享一个Logger，则可以在线程入口处使用LoggerMgr的
-add_logger()和switch_logger()添加共享的Logger实例，并切换到此Logger。
-
-## 多线程异步Logger
-共享Logger比较简单，但是多个线程之间会抢锁，性能不太好。多线程异步Logger会由
-每个线程都创建一个Logger，把日志写到本地，然后开启一个单独的线程来定时收取日志
-，线程之间不会产生竞争，性能较高。   
-log4rel提供了SAsyncLogger宏来简化异步logger的使用，它以单例的方式访问AsyncLogger
-实例。   
-使用AsyncLogger分为两个步骤：
-- 主线程中初始化并启动日志
-```
-    // 设置日志后端为普通文本后端
-    SAsyncLogger.set_sink(std::shared_ptr<PlainSink>(new PlainSink));
-    // 在Creator中设置需要日志的属性
-    SAsyncLogger.set_logger_creator([](){
-            std::shared_ptr<soce::log4rel::Logger> logger(new soce::log4rel::Logger);
-            logger->reserve_field(soce::log4rel::kLogFieldPos, true);
-            logger->set_log_level(soce::log4rel::kLogLevelInfo);
-            return logger;
-        });
-
-    SAsyncLogger.start();
-
-```
-- 在工作线程入口处调用以下方法
-```
-SAsyncLogger.init_thread_logger();
-```
 
 ## 示例
 ```
