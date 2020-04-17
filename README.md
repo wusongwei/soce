@@ -19,7 +19,7 @@ specific language governing permissions and limitations
 under the License.
 
 # 简介
-SOCE是Service Oriented Communication Framework的简称，提供基于
+SOCE是Service Oriented Communication Environment的简称，提供基于
 基于微服务编程所需要的基本工具，目前主要提供了RPC框架crpc、KV数据库fadsdb、
 协程库cort-engine、redis客户端、zookeeper客户端、日志库log4rel
 以及一些位于utils目录中的辅助类。
@@ -29,7 +29,7 @@ SOCE是Service Oriented Communication Framework的简称，提供基于
    - ***cort-engine/***  
    使用的是linux提供的makecontext等接口封装的协程库，支持Hook、Channel及
    协程连接池等。通过协程连接池，可以方便地为一些只支持同步操作的库提供异步访问机制。
-   这套接口性能较低，但比较简单。使用它们仅是为了方便，后续可能会更换。
+   这套接口性能不是很好，但比较简单。使用它们仅是为了方便，后续可能会更换。
    [详细文档](./cort-engine/README.md)
 
    - ***crpc/***  

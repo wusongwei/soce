@@ -12,7 +12,7 @@ SOCE项目基于对于商业应用友好的Apache Licence协议开源。如果�
 开源软件最大的问题是缺乏文档，为此作者发起捐赠出书计划，捐赠超过70块的捐赠者视为参与捐赠出书计划。如果有超过500人参与捐赠出书计划，作者将自费出书。对于参与捐赠出书计划的捐赠者，前500名将获赠图书一本，同时获得相同捐赠额度的股份。500名以后的捐赠者将获赠图书一本，同时获得捐赠额超过70块的差额的股份。（比如捐赠10块，获得10股；捐赠100，前500名获赠图书一本外加100股，500名以后的获赠图书一本外加30股。）
 
 # 捐赠二维码
-![SoceDonate](./img/zhifubao.jpg "zhifubao")&emsp;&emsp;&emsp;&emsp;![SoceDonate](./img/weixin.jpg "weixin")
+![SoceDonate](./img/zhifubao.jpg "zhifubao")&emsp;&emsp;&emsp;&emsp;![SoceDonate](./img/weixin.jpg "weixin")  
 参与捐赠出书计划请在留言中注明收件地址和联系方式。
 
 # 书籍拟定目录（非定稿）

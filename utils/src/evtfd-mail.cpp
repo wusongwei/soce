@@ -35,8 +35,28 @@ namespace utils{
         }
     }
 
+    int EvtfdMail::get_fd()
+    {
+        ReadLockGuard lck(lock_);
+        return evtfd_;
+    }
+
+    bool EvtfdMail::good()
+    {
+        ReadLockGuard lck(lock_);
+        return (evtfd_ > 0) ? true : false;
+    }
+
+    bool EvtfdMail::is_notified()
+    {
+        ReadLockGuard lck(lock_);
+        return notified_;
+    }
+
     int EvtfdMail::notify()
     {
+        ReadLockGuard lck(lock_);
+
         int rc = 0;
         if (!notified_) {
             uint64_t val = 1;
@@ -51,6 +71,8 @@ namespace utils{
 
     int EvtfdMail::clear()
     {
+        WriteLockGuard lck(lock_);
+
         int rc = 0;
         if (notified_) {
             uint64_t val;
@@ -61,36 +83,6 @@ namespace utils{
             }
         }
         return rc;
-    }
-
-    int EvtfdMailMt::get_fd()
-    {
-        ReadLockGuard lck(lock_);
-        return email_.get_fd();
-    }
-
-    bool EvtfdMailMt::good()
-    {
-        ReadLockGuard lck(lock_);
-        return email_.good();
-    }
-
-    bool EvtfdMailMt::is_notified()
-    {
-        ReadLockGuard lck(lock_);
-        return email_.is_notified();
-    }
-
-    int EvtfdMailMt::notify()
-    {
-        ReadLockGuard lck(lock_);
-        return email_.notify();
-    }
-
-    int EvtfdMailMt::clear()
-    {
-        WriteLockGuard lck(lock_);
-        return email_.clear();
     }
 
 } // namespace utils

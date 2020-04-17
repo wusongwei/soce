@@ -35,22 +35,6 @@ namespace utils{
         EvtfdMail(const EvtfdMail&) = delete;
         EvtfdMail& operator=(const EvtfdMail&) = delete;
 
-        inline int get_fd() {return evtfd_;}
-        inline bool good() {
-                return (evtfd_ > 0) ? true : false;
-            }
-        inline bool is_notified(){return notified_;}
-        int notify();
-        int clear();
-
-    private:
-        int evtfd_ = -1;
-        std::atomic<bool> notified_{false};
-    };
-
-    class EvtfdMailMt
-    {
-    public:
         int get_fd();
         bool good();
         bool is_notified();
@@ -58,7 +42,8 @@ namespace utils{
         int clear();
 
     private:
-        EvtfdMail email_;
+        int evtfd_ = -1;
+        std::atomic<bool> notified_{false};
         RWLock lock_;
     };
 
