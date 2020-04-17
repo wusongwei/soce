@@ -1,4 +1,4 @@
-# SOCE(Service Oriented Communication Framework)
+# SOCE(Service Oriented Communication Environment)
 
 # License
 Licensed to the Apache Software Foundation (ASF) under one
