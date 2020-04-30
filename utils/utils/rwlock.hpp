@@ -49,6 +49,26 @@ namespace utils{
                 }
             }
 
+        bool try_read_lock()
+            {
+                if (writing_){
+                    return false;
+                }
+
+                int readers = readers_;
+                bool lock = false;
+                if (readers_.compare_exchange_weak(readers, readers + 1)){
+                    if (!writing_){
+                        lock = true;
+                    }
+                    else{
+                        read_unlock();
+                    }
+                }
+
+                return lock;
+            }
+
         template <class Rep, class Period>
         bool try_read_lock_for(const std::chrono::duration<Rep,Period>& rel_time)
             {
@@ -98,6 +118,23 @@ namespace utils{
                         break;
                     }
                 }
+            }
+
+        bool try_write_lock()
+            {
+                if (!mtx_.try_lock()){
+                    return false;
+                }
+
+                ++writing_;
+                while (1){
+                    int readers = 0;
+                    if (readers_.compare_exchange_weak(readers, 0)){
+                        break;
+                    }
+                }
+
+                return true;
             }
 
         template <class Rep, class Period>
