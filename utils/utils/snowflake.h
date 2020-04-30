@@ -50,7 +50,7 @@ namespace utils{
         size_t seq_size_ = 12;
         int64_t seq_mask_ = 0;
         int64_t timestamp_mask_ = 0;
-        int64_t epoch_ = 1288834974657L;
+        int64_t epoch_ = 1577808000000L; // 2020-01-01 00:00:00
         std::atomic<int64_t> id_{0};
         constexpr static int64_t reserve_mask_ = ~((int64_t)1 << 63);
     };
