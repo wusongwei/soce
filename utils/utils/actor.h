@@ -26,7 +26,6 @@
 #include <mutex>
 #include <atomic>
 #include "transport/transport-if.h"
-#include "utils/rwlock.hpp"
 
 namespace soce {
 namespace utils {
@@ -41,16 +40,13 @@ namespace utils {
         void apply_task(ActorTask task);
 
     private:
-        bool add_task(ActorTask task);
-        ActorTask get_task();
-        void put_task(ActorTask task);
         void apply_accumulated();
+        ActorTask get_task();
 
     protected:
         std::queue<ActorTask> task_queue_;
         std::mutex mtx_;
-        RWLock rwlock_;
-        volatile bool running_ = false;
+        bool running_ = false;
     };
 
 } // namespace utils

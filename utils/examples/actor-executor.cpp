@@ -48,11 +48,11 @@ void timer_entry(ActorExecutor& ae,
     auto id = SCortEngine.create([&]{
             ae.submit(actor,
                       [&counted](Actor::ActorPtr actor){
-                    sleep(1);
-                    CounterActor* ca = (CounterActor*)actor.get();
-                    ca->add(1, counted);
-                    SOCE_DEBUG << _S("counted", counted);
-                });
+                          // sleep(1);
+                          CounterActor* ca = (CounterActor*)actor.get();
+                          ca->add(1, counted);
+                          SOCE_DEBUG << _S("counted", counted);
+                      });
         });
     SCortEngine.resume(id);
 }

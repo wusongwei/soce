@@ -24,74 +24,44 @@ namespace utils {
 
     void Actor::apply_task(Actor::ActorTask task)
     {
-        while (1){
-            if (rwlock_.try_write_lock()){
-                if (running_){ // running on other thread
-                    put_task(task);
-                    rwlock_.write_unlock();
-                }else{ // running on current thread
-                    running_ = true;
-                    rwlock_.write_unlock();
-                    task(shared_from_this());
-                    apply_accumulated();
-                }
+        mtx_.lock();
+        if (running_) {
+            task_queue_.push(task);
+            mtx_.unlock();
+        }else{
+            running_ = true;
+            mtx_.unlock();
+            task(shared_from_this());
+            apply_accumulated();
+        }
+    }
 
+    void Actor::apply_accumulated()
+    {
+        while (1){
+            mtx_.lock();
+            auto task = get_task();
+            if (task) {
+                mtx_.unlock();
+                task(shared_from_this());
+                continue;
+            }
+            else{
+                running_ = false;
+                mtx_.unlock();
                 break;
-            }else{
-                if (add_task(task)) {
-                    break;
-                }
             }
         }
     }
 
-    bool Actor::add_task(Actor::ActorTask task)
-    {
-        ReadLockGuard rlg(rwlock_);
-
-        bool added = false;
-        if (running_){
-            std::lock_guard<std::mutex> lck(mtx_);
-            task_queue_.push(task);
-            added = true;
-        }
-
-        return added;
-    }
-
     Actor::ActorTask Actor::get_task()
     {
-        std::lock_guard<std::mutex> lck(mtx_);
         Actor::ActorTask task;
         if (!task_queue_.empty()){
             task = task_queue_.front();
             task_queue_.pop();
         }
         return task;
-    }
-
-    void Actor::put_task(Actor::ActorTask task)
-    {
-        std::lock_guard<std::mutex> lck(mtx_);
-        task_queue_.push(task);
-    }
-
-    void Actor::apply_accumulated()
-    {
-        while (1){
-            rwlock_.write_lock();
-            auto task = get_task();
-            if (task) {
-                rwlock_.write_unlock();
-                task(shared_from_this());
-                continue;
-            }
-            else{
-                running_ = false;
-                rwlock_.write_lock();
-                break;
-            }
-        }
     }
 
 } // namespace utils
