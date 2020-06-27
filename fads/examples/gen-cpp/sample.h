@@ -1,5 +1,5 @@
-#ifndef _sample_1999911212_H_
-#define _sample_1999911212_H_
+#ifndef _sample_1317140219_H_
+#define _sample_1317140219_H_
 
 #include <string>
 #include <bitset>
@@ -8,6 +8,8 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+#include "proto/fads-message.h"
+#include "proto/fads-message.h"
 #include "proto/soce-proto.h"
 #include "proto/type-tree.h"
 
@@ -31,7 +33,7 @@ public:
     PrimaryTypeTypeTree(soce::proto::TypeTree& type_tree);
 };
 
-class PrimaryType{
+class PrimaryType : public soce::fads::FadsMessage{
 public:
     void set_a(const bool& _a){
         a = _a;
@@ -226,8 +228,8 @@ public:
 
     size_t read(soce::proto::ProtoIf* proto, bool required, bool with_type);
     size_t write(soce::proto::ProtoIf* proto, bool required, bool has_set, bool with_type = true) const;
-    size_t deserialize(soce::proto::ProtoIf* proto);
-    size_t serialize(soce::proto::ProtoIf* proto) const;
+    virtual size_t deserialize(soce::proto::ProtoIf* proto);
+    virtual size_t serialize(soce::proto::ProtoIf* proto) const;
     static soce::proto::TypeTree* get_type_tree();
 
 private:
@@ -261,7 +263,7 @@ public:
     ComplexTypeTypeTree(soce::proto::TypeTree& type_tree);
 };
 
-class ComplexType{
+class ComplexType : public soce::fads::FadsMessage{
 public:
     void set_pt(const PrimaryType& _pt){
         pt = _pt;
@@ -328,8 +330,8 @@ public:
 
     size_t read(soce::proto::ProtoIf* proto, bool required, bool with_type);
     size_t write(soce::proto::ProtoIf* proto, bool required, bool has_set, bool with_type = true) const;
-    size_t deserialize(soce::proto::ProtoIf* proto);
-    size_t serialize(soce::proto::ProtoIf* proto) const;
+    virtual size_t deserialize(soce::proto::ProtoIf* proto);
+    virtual size_t serialize(soce::proto::ProtoIf* proto) const;
     static soce::proto::TypeTree* get_type_tree();
 
 private:
@@ -357,7 +359,7 @@ public:
     SampleAsElemTypeTree(soce::proto::TypeTree& type_tree);
 };
 
-class SampleAsElem{
+class SampleAsElem : public soce::fads::FadsMessage{
 public:
     void set_a(const int32_t& _a){
         a = _a;
@@ -402,8 +404,8 @@ public:
 
     size_t read(soce::proto::ProtoIf* proto, bool required, bool with_type);
     size_t write(soce::proto::ProtoIf* proto, bool required, bool has_set, bool with_type = true) const;
-    size_t deserialize(soce::proto::ProtoIf* proto);
-    size_t serialize(soce::proto::ProtoIf* proto) const;
+    virtual size_t deserialize(soce::proto::ProtoIf* proto);
+    virtual size_t serialize(soce::proto::ProtoIf* proto) const;
     static soce::proto::TypeTree* get_type_tree();
 
 private:
@@ -565,7 +567,7 @@ public:
     SampleListTypeTree(soce::proto::TypeTree& type_tree);
 };
 
-class SampleList{
+class SampleList : public soce::fads::FadsMessage{
 public:
     void set_opl(const OutterPrimayList& _opl){
         opl = _opl;
@@ -738,8 +740,8 @@ public:
 
     size_t read(soce::proto::ProtoIf* proto, bool required, bool with_type);
     size_t write(soce::proto::ProtoIf* proto, bool required, bool has_set, bool with_type = true) const;
-    size_t deserialize(soce::proto::ProtoIf* proto);
-    size_t serialize(soce::proto::ProtoIf* proto) const;
+    virtual size_t deserialize(soce::proto::ProtoIf* proto);
+    virtual size_t serialize(soce::proto::ProtoIf* proto) const;
     static soce::proto::TypeTree* get_type_tree();
 
 private:
@@ -906,7 +908,7 @@ public:
     SampleSetTypeTree(soce::proto::TypeTree& type_tree);
 };
 
-class SampleSet{
+class SampleSet : public soce::fads::FadsMessage{
 public:
     void set_opl(const OutterPrimaySet& _opl){
         opl = _opl;
@@ -1079,8 +1081,8 @@ public:
 
     size_t read(soce::proto::ProtoIf* proto, bool required, bool with_type);
     size_t write(soce::proto::ProtoIf* proto, bool required, bool has_set, bool with_type = true) const;
-    size_t deserialize(soce::proto::ProtoIf* proto);
-    size_t serialize(soce::proto::ProtoIf* proto) const;
+    virtual size_t deserialize(soce::proto::ProtoIf* proto);
+    virtual size_t serialize(soce::proto::ProtoIf* proto) const;
     static soce::proto::TypeTree* get_type_tree();
 
 private:
@@ -1292,7 +1294,7 @@ public:
     SampleMapTypeTree(soce::proto::TypeTree& type_tree);
 };
 
-class SampleMap{
+class SampleMap : public soce::fads::FadsMessage{
 public:
     void set_opm(const OutterPrimayMap& _opm){
         opm = _opm;
@@ -1515,8 +1517,8 @@ public:
 
     size_t read(soce::proto::ProtoIf* proto, bool required, bool with_type);
     size_t write(soce::proto::ProtoIf* proto, bool required, bool has_set, bool with_type = true) const;
-    size_t deserialize(soce::proto::ProtoIf* proto);
-    size_t serialize(soce::proto::ProtoIf* proto) const;
+    virtual size_t deserialize(soce::proto::ProtoIf* proto);
+    virtual size_t serialize(soce::proto::ProtoIf* proto) const;
     static soce::proto::TypeTree* get_type_tree();
 
 private:

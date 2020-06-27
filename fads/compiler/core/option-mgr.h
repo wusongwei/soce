@@ -17,8 +17,8 @@
 * under the License.
 */
 
-#ifndef _SOCE_OPTION_MGR_fkcxRCxoCV_H_
-#define _SOCE_OPTION_MGR_fkcxRCxoCV_H_
+#ifndef _SOCE_FADS_OPTION_MGR_fkcxRCxoCV_H_
+#define _SOCE_FADS_OPTION_MGR_fkcxRCxoCV_H_
 
 #include <string>
 

@@ -17,64 +17,17 @@
 * under the License.
 */
 
-#include <sstream>
-#include <fstream>
+
 #include <string.h>
 #include <stdlib.h>
-#include <time.h>
-#include <sys/types.h>
-#include <sys/stat.h>
 #include <unistd.h>
-#include "fads.h"
 #include "log4rel/logger.h"
-#include "log4rel/plain-sink.h"
+#include "../cpp/cpp-generator.h"
 #include "utils.h"
+#include "fads.h"
 
 using namespace std;
 using namespace soce::compiler;
-
-static void add_header_protection_begin(const std::string& name, std::ostringstream& oss)
-{
-    string nstr = name;
-    size_t len = nstr.size();
-    for (size_t i=0; i<len; ++i){
-        if (nstr[i] == '-'){
-            nstr[i] = '_';
-        }
-    }
-    std::ostringstream hp;
-    hp << "_" << nstr << "_";
-    srand(time(NULL));
-    hp << std::to_string(rand()) << "_H_";
-
-    oss << "#ifndef " << hp.str() << "\n"
-        << "#define " << hp.str() << "\n\n";
-}
-
-static void add_header_protection_end(std::ostringstream& oss)
-{
-    oss << "#endif\n";
-}
-
-static void add_ns_begin(std::ostringstream& oss)
-{
-    vector<string> ns;
-    (void)soce::utils::StrHelper::split(SOpMgr.get_namespace(), ".", ns);
-    for (auto& i : ns){
-        oss << "namespace " << i << "{ ";
-    }
-    oss << "\n";
-}
-
-static void add_ns_end(std::ostringstream& oss)
-{
-    vector<string> ns;
-    (void)soce::utils::StrHelper::split(SOpMgr.get_namespace(), ".", ns);
-    for (auto& i : ns){
-        oss << "}";
-    }
-    oss << "//end namespace\n\n";
-}
 
 
 static int parse_option(int argc, char* argv[])
@@ -112,6 +65,14 @@ static int parse_option(int argc, char* argv[])
             arg = argv[++i];
             SOpMgr.set_namespace(arg);
         }
+        else if (strcmp(arg, "-lang") == 0) {
+            arg = argv[++i];
+            if (strcmp(arg, "cpp")!=0 && strcmp(arg, "java")!=0) {
+                std::cerr << "not supported language : " << arg;
+                exit(1);
+            }
+            SOpMgr.set_lang(arg);
+        }
         else if ((strcmp(arg, "-o") == 0) || (strcmp(arg, "-out") == 0)) {
             arg = argv[++i];
 
@@ -134,92 +95,23 @@ int main(int argc, char* argv[])
         return -1;
     }
 
-    string name = Utils::parse_input_file_name(argv[argc-1]);
-    if (name.empty()){
+    string file = argv[argc - 1];
+    if (SSchemaParser.parse_file(file)){
         return -1;
     }
 
-    if (SSchemaParser.parse_file(argv[argc-1])){
-        return -1;
+    std::shared_ptr<CodeGenerator> cg;
+    string lang = SOpMgr.get_lang();
+    if (lang == "cpp") {
+        cg.reset(new CppGenerator);
+    }
+    else if (lang == "java") {
+        //cg.reset(new JavaGenerator);
+    }
+    else{
+        cerr << "Not supported language : " << lang << endl;
+        exit(1);
     }
 
-    string gen_dir = SOpMgr.get_output_path();
-    struct stat s_buf;
-    gen_dir += "/gen-cpp";
-    stat(gen_dir.c_str(), &s_buf);
-    if (!S_ISDIR(s_buf.st_mode)){
-        if (mkdir(gen_dir.c_str(), 0755)){
-            SOCE_ERROR << _S("mkdir", gen_dir);
-            return -1;
-        }
-    }
-
-    string header_file_name = gen_dir + "/" + name + ".h";
-    ofstream header_file;
-    header_file.open(header_file_name);
-
-    string impl_file_name = gen_dir + "/" + name + ".cpp";
-    ofstream impl_file;
-    impl_file.open(impl_file_name);
-
-    ostringstream oss;
-    add_header_protection_begin(name, oss);
-    STypeCreater.gen_header(oss);
-    add_ns_end(oss);
-    add_header_protection_end(oss);
-    header_file << oss.str() << endl;
-
-    oss.clear();
-    oss.str("");
-    oss << "#include \"" << name << ".h\"\n\n";
-    add_ns_begin(oss);
-    oss << "static soce::proto::TypeTree g_type_tree;\n";
-    if (!SSvrCrt.empty()){
-        oss << "static soce::crpc::CrpcReqHeaderTypeTree s_crpc_req_header_type_tree(g_type_tree);\n"
-            << "static soce::crpc::CrpcRespHeaderTypeTree s_crpc_resp_header_type_tree(g_type_tree);\n";
-    }
-    oss << "\n";
-    STypeCreater.gen_impl(oss);
-    add_ns_end(oss);
-    impl_file << oss.str() << endl;
-
-    if (!SSvrCrt.empty()){
-        oss.clear();
-        oss.str("");
-        SSvrCrt.gen_header(oss);
-
-        string service_header_file_name = gen_dir + "/" + name + "-service.h";
-        ofstream service_header_file;
-        service_header_file.open(service_header_file_name);
-        ostringstream s;
-        add_header_protection_begin(name + "_service", s);
-        s << "#include \"crpc/base-service.h\"\n"
-            "#include \"crpc/client/base-sync-client.h\"\n"
-            "#include \"crpc/client/base-cort-client.h\"\n\n";
-        add_ns_begin(s);
-        add_ns_end(oss);
-        add_header_protection_end(oss);
-
-        service_header_file << s.str() << endl;;
-        service_header_file << oss.str();
-
-        oss.clear();
-        oss.str("");
-        SSvrCrt.gen_impl(oss);
-        string service_impl_file_name = gen_dir + "/" + name + "-service.cpp";
-        ofstream service_impl_file;
-        s.clear();
-        s.str("");
-        s << "#include \"" << name << "-service.h\"\n"
-          << "#include \"" << name << ".h\"\n"
-          << "#include \"proto/binary-proto.h\"\n\n";
-
-        add_ns_begin(s);
-        add_ns_end(oss);
-        service_impl_file.open(service_impl_file_name);
-        service_impl_file << s.str();
-        service_impl_file << oss.str();
-    }
-
-    return 0;
+    return cg->gen_code(file);
 }
