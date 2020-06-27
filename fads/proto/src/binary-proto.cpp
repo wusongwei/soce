@@ -239,18 +239,6 @@ namespace proto{
         return rc;
     }
 
-    uint32_t BinaryProto::write_bytes(const char* arg, uint32_t len)
-    {
-        hold_place(6 + len);
-
-        uint32_t rc = 0;
-        rc = write_type(SoceDataType::kTypeBytes);
-        rc += write_len(len);
-        memcpy(data_ + size_, arg, len);
-        size_ += len;
-        return  rc + len;
-    }
-
     uint32_t BinaryProto::write_int32(int32_t arg, bool with_type)
     {
         hold_place(6);
@@ -318,6 +306,27 @@ namespace proto{
         memcpy(data_ + size_, arg.c_str(), len);
         size_ += len;
         return rc + len;
+    }
+
+    uint32_t BinaryProto::write_bytes(const char* arg, uint32_t len)
+    {
+        hold_place(6 + len);
+
+        uint32_t rc = 0;
+        rc = write_type(SoceDataType::kTypeBytes);
+        rc += write_len(len);
+        memcpy(data_ + size_, arg, len);
+        size_ += len;
+        return  rc + len;
+    }
+
+    uint32_t BinaryProto::write_raw_bytes(const char* arg, uint32_t len)
+    {
+        hold_place(len);
+
+        memcpy(data_ + size_, arg, len);
+        size_ += len;
+        return  len;
     }
 
     uint32_t BinaryProto::write_byte(char arg)

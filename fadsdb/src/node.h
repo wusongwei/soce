@@ -25,5 +25,6 @@
 #include "node-set.hpp"
 #include "node-map.hpp"
 #include "node-struct.h"
+#include "node-any.h"
 
 #endif

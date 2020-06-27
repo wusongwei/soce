@@ -36,6 +36,7 @@ namespace fadsdb{
     class NodeIf
     {
     public:
+        virtual ~NodeIf(){}
         virtual std::shared_ptr<NodeIf> clone() = 0; // clone without value
         virtual SoceDataType get_type() = 0;
         virtual uint32_t serialize(ProtoIf* proto, bool with_type) = 0;

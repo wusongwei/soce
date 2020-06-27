@@ -101,6 +101,9 @@ namespace fadsdb{
         else if(type == "string"){
             node.reset(new NodeString);
         }
+        else if (type == "any") {
+            node.reset(new NodeAny);
+        }
 
         return node;
     }

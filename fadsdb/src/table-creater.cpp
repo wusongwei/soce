@@ -744,7 +744,8 @@ namespace fadsdb{
                 || type == "i64"
                 || type == "float"
                 || type == "double"
-                || type == "string") ? true : false;
+                || type == "string"
+                || type == "any") ? true : false;
     }
 
     int TableCreater::CustomType::add_elem(const string& type,

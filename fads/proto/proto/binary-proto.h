@@ -51,6 +51,7 @@ namespace proto{
         virtual uint32_t write_string(const std::string& arg, bool with_type);
         virtual uint32_t write_bytes(const char* arg, uint32_t len);
 
+        virtual uint32_t write_raw_bytes(const char* arg, uint32_t len);
         virtual uint32_t write_byte(char arg);
         virtual uint32_t write_type(SoceDataType type);
         virtual uint32_t write_len(uint32_t len);

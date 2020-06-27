@@ -107,6 +107,8 @@ namespace proto{
         virtual uint32_t write_double(double arg, bool with_type = false) = 0;
         virtual uint32_t write_string(const std::string& arg, bool with_type = false) = 0;
         virtual uint32_t write_bytes(const char* arg, uint32_t len) = 0;
+
+        virtual uint32_t write_raw_bytes(const char* arg, uint32_t len) = 0;
         virtual uint32_t write_byte(char arg) = 0;
         virtual uint32_t write_type(SoceDataType type) = 0;
         virtual uint32_t write_len(uint32_t len) = 0;

@@ -98,6 +98,7 @@ private:
     void create_test()
         {
             FadsDbResponse response;
+            //int rc = client_->create("struct Worker{any name; i32 age;} table company{string CEO; Worker worker;}", response);
             int rc = client_->create("struct Worker{string name; i32 age;} table company{string CEO; Worker worker;}", response);
             if (rc == 0) {
                 SOCE_INFO << _S("create", response.get_status());
